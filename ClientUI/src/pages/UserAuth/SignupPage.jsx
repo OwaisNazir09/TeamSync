@@ -129,22 +129,7 @@ function SignupPage() {
                                         </select>
                                     </div>
 
-                                    {/* Nationality */}
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1 text-white/80">
-                                            Nationality
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="nationality"
-                                            value={formData.nationality}
-                                            onChange={handleChange}
-                                            placeholder="Enter nationality"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                        />
-                                    </div>
-
-                                    {/* Email */}
+                                
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Email Address*
@@ -160,7 +145,6 @@ function SignupPage() {
                                         />
                                     </div>
 
-                                    {/* Phone Number */}
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Phone Number*
@@ -176,39 +160,8 @@ function SignupPage() {
                                         />
                                     </div>
 
-                                    {/* Job Title */}
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1 text-white/80">
-                                            Job Title*
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="job_title"
-                                            value={formData.job_title}
-                                            onChange={handleChange}
-                                            placeholder="Enter job title"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                            required
-                                        />
-                                    </div>
+                                   
 
-                                    {/* Employee ID */}
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1 text-white/80">
-                                            Employee ID*
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="employee_id"
-                                            value={formData.employee_id}
-                                            onChange={handleChange}
-                                            placeholder="Enter employee ID"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                            required
-                                        />
-                                    </div>
-
-                                    {/* Password - spans full width */}
                                     <div className="col-span-1 md:col-span-2">
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Password*

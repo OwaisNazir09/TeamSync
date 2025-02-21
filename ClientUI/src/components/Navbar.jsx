@@ -23,14 +23,14 @@ const Navbar = () => {
 
 
       <div className="hidden md:flex gap-4  bg-gradient-to-r from-blue-500 to-teal-400 rounded-xl p-1">
-        <Link to="/UserAuth">
+        <Link to="/UserAuth/login">
           <button className="px-2 py-1  text-white  rounded-lg hover:bg-blue-700 transition">
             Login
           </button>
         </Link>
 
 
-        <Link to="/UserAuth">
+        <Link to="/UserAuth/signup">
           <button className="px-2 py-1 bg-blue-800 text-white rounded-lg hover:bg-blue-700 transition">
             SignUP
           </button>

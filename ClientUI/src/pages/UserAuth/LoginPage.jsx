@@ -13,13 +13,13 @@ function LoginPage() {
     const handleSendOtp = () => {
         if (email) {
             setOtpSent(true);
-            // Here you would add your actual OTP sending logic
+          
         }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Add your authentication logic here
+        
     };
 
     return (
