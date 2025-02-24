@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import HomeBackground from "../../assets/HeroBackground.png";
+import HomeBackground from "./assests/HeroBackground.png";
 
 const Hero = () => {
     const [isVisible, setIsVisible] = useState(false);
 
-    // Animation on mount
     useEffect(() => {
         setIsVisible(true);
     }, []);
