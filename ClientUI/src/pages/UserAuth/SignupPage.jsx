@@ -3,18 +3,18 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import LoginBg from "./assests/LoginPageBg.png";
 import LogindevBg from "./assests/LogindevBg.png";
+import { useSignupMutation } from "./services/userAuth";
 
 function SignupPage() {
+
+    const [signup, { isLoading, error }] = useSignupMutation();
     const [formData, setFormData] = useState({
         first_name: "",
         last_name: "",
         date_of_birth: "",
         gender: "",
-        nationality: "",
         email: "",
         phone_number: "",
-        job_title: "",
-        employee_id: "",
         password: "",
         confirm_password: ""
     });
@@ -27,10 +27,16 @@ function SignupPage() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add your registration logic here
         console.log("Form submitted:", formData);
+        try {
+            const response = await signup(formData).unwrap();
+            console.log("Signup successful:", response);
+        } catch (err) {
+            console.error("Signup failed:", err);
+        }
+
     };
 
     return (
@@ -49,7 +55,7 @@ function SignupPage() {
 
                     {/* Main container with split layout */}
                     <div className="relative flex flex-col md:flex-row bg-black/80 backdrop-blur-lg rounded-xl border border-white/20 shadow-2xl overflow-hidden">
-                        
+
                         {/* LEFT SIDE - Signup Form */}
                         <div className="w-full md:w-3/5 border-r-0 md:border-r border-white/10">
                             <div className="p-6 border-b border-white/10">
@@ -129,7 +135,7 @@ function SignupPage() {
                                         </select>
                                     </div>
 
-                                
+
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Email Address*
@@ -160,7 +166,7 @@ function SignupPage() {
                                         />
                                     </div>
 
-                                   
+
 
                                     <div className="col-span-1 md:col-span-2">
                                         <label className="block text-sm font-medium mb-1 text-white/80">
@@ -229,7 +235,7 @@ function SignupPage() {
                                 </p>
                             </div>
                         </div>
-                        
+
                         {/* RIGHT SIDE - Information Section */}
                         <div className="hidden md:flex md:w-2/5 flex-col justify-center items-center p-8 bg-gradient-to-br from-indigo-900/40 to-purple-900/40">
                             <div className="max-w-md text-center">
@@ -238,13 +244,13 @@ function SignupPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                     </svg>
                                 </div>
-                                
+
                                 <h3 className="text-2xl font-bold text-white mb-4">Join Our Community</h3>
-                                
+
                                 <p className="text-white/80 mb-6">
                                     Create your account to access exclusive features and personalized experiences.
                                 </p>
-                                
+
                                 <div className="mt-8 space-y-4">
                                     <div className="flex items-start text-left space-x-3">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mt-0.5 text-green-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -255,7 +261,7 @@ function SignupPage() {
                                             <p className="text-white/60 text-sm">Your data is encrypted and protected with enterprise-grade security</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start text-left space-x-3">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mt-0.5 text-green-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -265,7 +271,7 @@ function SignupPage() {
                                             <p className="text-white/60 text-sm">Access all your tools and resources in one place</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-start text-left space-x-3">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mt-0.5 text-green-400 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -276,7 +282,7 @@ function SignupPage() {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {/* Footer for desktop view */}
                                 <div className="mt-12 pt-4 border-t border-white/10">
                                     <p className="text-white/60 text-sm">

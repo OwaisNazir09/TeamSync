@@ -15,16 +15,14 @@ const Hero = () => {
             className="hero bg-cover bg-center h-screen relative flex items-center justify-center overflow-hidden"
             style={{ backgroundImage: `url(${HomeBackground})` }}
         >
-            {/* Dark overlay to improve text readability */}
             <div className="absolute inset-0 bg-black/20"></div>
 
-            {/* Animated blobs */}
             <div className="absolute top-20 right-20 w-64 h-64 bg-blue-300/20 rounded-full blur-3xl animate-blob"></div>
             <div className="absolute bottom-20 left-20 w-72 h-72 bg-indigo-300/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
             <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-purple-300/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
 
-            {/* Main content */}
-            <div className={`relative z-10 text-center px-4 sm:px-6 lg:px-8 transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+
+            <div className={`relative z-2 text-center px-4 sm:px-6 lg:px-8 transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                 <h1 className=" text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4 leading-tight">
                     The all-in-one app <br className="hidden md:block" />
                     <span className="text-white">for modern teams.</span>
@@ -35,7 +33,6 @@ const Hero = () => {
                     Work smarter, move faster—together.
                 </p>
 
-                {/* Buttons */}
                 <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
                     <button className="group bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center">
                         Get Started
@@ -50,14 +47,13 @@ const Hero = () => {
                 </div>
             </div>
 
-            {/* Scroll indicator */}
             <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce hidden md:block">
                 <div className="w-8 h-12 border-2 border-gray-100 rounded-full flex justify-center pt-2">
                     <div className="w-1 h-3 bg-white rounded-full animate-ping"></div>
                 </div>
             </div>
 
-            <div className="absolute z--10 bottom-0 left-0 right-0 h-9 bg-gradient-to-t from-gray-50 to-transparent z-29999"></div>
+            <div className="absolute z-10 bottom-0 left-0 right-0 h-9 bg-gradient-to-t from-gray-50 to-transparent "></div>
         </section>
     );
 };

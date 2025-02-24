@@ -4,6 +4,7 @@ import Footer from "../../components/Footer";
 import LoginBg from "./assests/LoginPageBg.png";
 import LogindevBg from "./assests/LogindevBg.png";
 
+
 function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -30,16 +31,16 @@ function LoginPage() {
                 style={{ backgroundImage: `url(${LoginBg})` }}
             >
                 <div className="w-full max-w-4xl relative">
-                    {/* Blurred background effect */}
+                   
                     <div
                         className="absolute inset-0 rounded-xl bg-cover bg-center"
                         style={{ backgroundImage: `url(${LogindevBg})` }}
                     ></div>
 
-                    {/* Main container with split layout */}
+                    
                     <div className="relative flex flex-col md:flex-row bg-black/80 backdrop-blur-lg rounded-xl border border-white/20 shadow-2xl overflow-hidden">
 
-                        {/* LEFT SIDE - Login Form */}
+                    
                         <div className="w-full md:w-1/2 border-r-0 md:border-r border-white/10">
                             <div className="p-6 border-b border-white/10">
                                 <h2 className="text-2xl font-bold text-white text-center">
@@ -78,7 +79,7 @@ function LoginPage() {
                                         </div>
                                     </div>
 
-                                    {/* Password field */}
+                       
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <label className="text-sm font-medium text-white/80">
@@ -98,7 +99,6 @@ function LoginPage() {
                                         />
                                     </div>
 
-                                    {/* OTP field */}
                                     <div>
                                         <label className="block text-sm font-medium mb-2 text-white/80">
                                             One-Time Password
