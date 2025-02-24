@@ -1,13 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import LoginBg from "./assests/LoginPageBg.png";
 import LogindevBg from "./assests/LogindevBg.png";
-import { useSignupMutation } from "./services/userAuth";
+import { useSignupMutation, useOtpGeneratorMutation } from "./services/userAuth";
+import { useNavigate } from "react-router-dom";
+
 
 function SignupPage() {
 
+    const navigate = useNavigate();
     const [signup, { isLoading, error }] = useSignupMutation();
+    const [generateOtp] = useOtpGeneratorMutation();
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpMessage, setOtpMessage] = useState("");
+    const [otp, setOtp] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const [formData, setFormData] = useState({
         first_name: "",
         last_name: "",
@@ -19,6 +27,25 @@ function SignupPage() {
         confirm_password: ""
     });
 
+    useEffect(() => {
+        if (formData.email && formData.email.includes('@') && formData.email.includes('.')) {
+            setOtpSent(true);
+        } else {
+            setOtpSent(false);
+            setOtpMessage("");
+        }
+    }, [formData.email]);
+
+    useEffect(() => {
+        if (formData.password || formData.confirm_password) {
+            if (formData.password !== formData.confirm_password) {
+                setPasswordError("Passwords do not match");
+            } else {
+                setPasswordError("");
+            }
+        }
+    }, [formData.password, formData.confirm_password]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -27,18 +54,40 @@ function SignupPage() {
         }));
     };
 
+    const handleSendOtp = async () => {
+        if (formData.email) {
+            try {
+                await generateOtp(formData.email).unwrap();
+                setOtpMessage("OTP sent successfully! Please check your email.");
+                setTimeout(() => {
+                    setOtpMessage("");
+                }, 5000);
+            } catch (err) {
+                setOtpMessage("Failed to send OTP. Please try again.");
+                console.error("Failed to send OTP:", err);
+            }
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Form submitted:", formData);
+
+        if (formData.password !== formData.confirm_password) {
+            setPasswordError("Passwords do not match");
+            return;
+        }
+
         try {
-            const response = await signup(formData).unwrap();
+            const response = await signup({ ...formData, otp }).unwrap();
             console.log("Signup successful:", response);
+
+            if (response.status === "success") {
+                navigate("/UserAuth/login");
+            }
         } catch (err) {
             console.error("Signup failed:", err);
         }
-
     };
-
     return (
         <>
             <Navbar />
@@ -47,7 +96,7 @@ function SignupPage() {
                 style={{ backgroundImage: `url(${LoginBg})` }}
             >
                 <div className="w-full max-w-5xl relative">
-                    {/* Blurred background effect */}
+
                     <div
                         className="absolute inset-0 rounded-xl bg-cover bg-center"
                         style={{ backgroundImage: `url(${LogindevBg})` }}
@@ -68,7 +117,7 @@ function SignupPage() {
                             </div>
 
                             <div className="p-6">
-                                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <form autoComplete="off" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* First Name */}
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
@@ -115,8 +164,6 @@ function SignupPage() {
                                             required
                                         />
                                     </div>
-
-                                    {/* Gender */}
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Gender*
@@ -135,22 +182,59 @@ function SignupPage() {
                                         </select>
                                     </div>
 
-
-                                    <div>
+                                    <div className="col-span-1 md:col-span-2">
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Email Address*
                                         </label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            placeholder="name@company.com"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                            required
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={handleChange}
+                                                placeholder="name@company.com"
+                                                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                                required
+                                            />
+                                            {formData.email && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSendOtp}
+                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-0.5 px-1.5 text-sm rounded-md hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md shadow-indigo-500/30"
+                                                >
+                                                    Send OTP
+                                                </button>
+
+
+                                            )}
+                                        </div>
+                                        {otpMessage && (
+                                            <p className={`mt-2 text-sm ${otpMessage.includes('success') ? 'text-green-400' : 'text-red-400'}`}>
+                                                {otpMessage}
+                                            </p>
+                                        )}
                                     </div>
 
+
+                                    {/* OTP Input */}
+                                    {otpSent && (
+                                        <div className="col-span-1 md:col-span-2">
+                                            <label className="block text-sm font-medium mb-1 text-white/80">
+                                                OTP*
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="otp"
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value)}
+                                                placeholder="Enter OTP"
+                                                className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Phone Number */}
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Phone Number*
@@ -166,8 +250,7 @@ function SignupPage() {
                                         />
                                     </div>
 
-
-
+                                    {/* Password */}
                                     <div className="col-span-1 md:col-span-2">
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Password*
@@ -178,12 +261,12 @@ function SignupPage() {
                                             value={formData.password}
                                             onChange={handleChange}
                                             placeholder="Create a strong password"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                            className={`w-full bg-white/5 border ${passwordError ? 'border-red-500' : 'border-white/20'} rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
                                             required
                                         />
                                     </div>
 
-                                    {/* Confirm Password - spans full width */}
+                                    {/* Confirm Password */}
                                     <div className="col-span-1 md:col-span-2">
                                         <label className="block text-sm font-medium mb-1 text-white/80">
                                             Confirm Password*
@@ -194,9 +277,14 @@ function SignupPage() {
                                             value={formData.confirm_password}
                                             onChange={handleChange}
                                             placeholder="Confirm your password"
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                            className={`w-full bg-white/5 border ${passwordError ? 'border-red-500' : 'border-white/20'} rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
                                             required
                                         />
+                                        {passwordError && (
+                                            <p className="mt-2 text-sm text-red-400">
+                                                {passwordError}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Terms and Conditions Checkbox */}
@@ -213,11 +301,14 @@ function SignupPage() {
                                         </label>
                                     </div>
 
-                                    {/* Sign up button - spans full width */}
                                     <div className="col-span-1 md:col-span-2 mt-4">
                                         <button
                                             type="submit"
-                                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-500/30"
+                                            disabled={!!passwordError}
+                                            className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-indigo-500/30 ${passwordError
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:from-indigo-700 hover:to-purple-700'
+                                                }`}
                                         >
                                             Create Account
                                         </button>
@@ -225,7 +316,6 @@ function SignupPage() {
                                 </form>
                             </div>
 
-                            {/* Card footer for mobile view only */}
                             <div className="p-4 bg-black/40 border-t border-white/10 text-center md:hidden">
                                 <p className="text-white/60 text-sm">
                                     Already have an account?{" "}
@@ -235,8 +325,7 @@ function SignupPage() {
                                 </p>
                             </div>
                         </div>
-
-                        {/* RIGHT SIDE - Information Section */}
+                        {/* RIGHT SIDE - Community Info */}
                         <div className="hidden md:flex md:w-2/5 flex-col justify-center items-center p-8 bg-gradient-to-br from-indigo-900/40 to-purple-900/40">
                             <div className="max-w-md text-center">
                                 <div className="mb-6 mx-auto w-24 h-24 rounded-full bg-indigo-500/20 flex items-center justify-center">
@@ -283,7 +372,6 @@ function SignupPage() {
                                     </div>
                                 </div>
 
-                                {/* Footer for desktop view */}
                                 <div className="mt-12 pt-4 border-t border-white/10">
                                     <p className="text-white/60 text-sm">
                                         Already have an account?{" "}
