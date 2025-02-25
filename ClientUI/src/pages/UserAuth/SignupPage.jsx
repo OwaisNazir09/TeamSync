@@ -26,6 +26,9 @@ function SignupPage() {
         password: "",
         confirm_password: ""
     });
+    const handleNavigation = () => {
+        navigate("/UserAuth/login");
+    };
 
     useEffect(() => {
         if (formData.email && formData.email.includes('@') && formData.email.includes('.')) {
@@ -78,7 +81,8 @@ function SignupPage() {
         }
 
         try {
-            const response = await signup({ ...formData, otp }).unwrap();
+            const { confirm_password, ...dataToSend } = formData;
+            const response = await signup({ ...dataToSend, otp }).unwrap();
             console.log("Signup successful:", response);
 
             if (response.status === "success") {
@@ -287,7 +291,6 @@ function SignupPage() {
                                         )}
                                     </div>
 
-                                    {/* Terms and Conditions Checkbox */}
                                     <div className="col-span-1 md:col-span-2 mt-2">
                                         <label className="flex items-center space-x-2 cursor-pointer">
                                             <input
@@ -319,9 +322,9 @@ function SignupPage() {
                             <div className="p-4 bg-black/40 border-t border-white/10 text-center md:hidden">
                                 <p className="text-white/60 text-sm">
                                     Already have an account?{" "}
-                                    <a href="#" className="text-indigo-400 hover:text-indigo-300 font-medium">
-                                        Sign In
-                                    </a>
+                                    <button onClick={handleNavigation} className="text-indigo-400 hover:text-indigo-300 font-medium">
+                                        Sign in
+                                    </button>
                                 </p>
                             </div>
                         </div>
@@ -375,9 +378,9 @@ function SignupPage() {
                                 <div className="mt-12 pt-4 border-t border-white/10">
                                     <p className="text-white/60 text-sm">
                                         Already have an account?{" "}
-                                        <a href="#" className="text-indigo-400 hover:text-indigo-300 font-medium">
-                                            Sign In
-                                        </a>
+                                        <button onClick={handleNavigation} className="text-indigo-400 hover:text-indigo-300 font-medium">
+                                            Sign in
+                                        </button>
                                     </p>
                                 </div>
                             </div>

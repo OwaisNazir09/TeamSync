@@ -1,26 +1,66 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import LoginBg from "./assests/LoginPageBg.png";
 import LogindevBg from "./assests/LogindevBg.png";
-
+import { useOtpGeneratorMutation, useLoginMutation } from "./services/userAuth";
 
 function LoginPage() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [otp, setOtp] = useState("");
+    const navigate = useNavigate();
+    const [generateOtp] = useOtpGeneratorMutation();
+    const [login] = useLoginMutation();
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+        otp: ""
+    });
     const [otpSent, setOtpSent] = useState(false);
+    const [otpMessage, setOtpMessage] = useState("");
 
-    const handleSendOtp = () => {
+    const { email, password, otp } = formData;
+
+
+    const handleNavigation = () => {
+        navigate("/UserAuth/signup");
+    };
+
+    const handleSendOtp = async () => {
         if (email) {
-            setOtpSent(true);
-          
+            try {
+                await generateOtp(email).unwrap();
+                setOtpSent(true);
+                setOtpMessage("OTP sent successfully! Please check your email.");
+                setTimeout(() => {
+                    setOtpMessage("");
+                }, 9000);
+            } catch (err) {
+                setOtpMessage("Failed to send OTP. Please try again.");
+                console.error("Failed to send OTP:", err);
+            }
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        
+        try {
+            const response = await login(formData).unwrap();
+            console.log("login successful:", response);
+
+            if (response.status === "success") {
+                navigate("/dashboard");
+            }
+        } catch (err) {
+            console.error("login failed:", err);
+        }
     };
 
     return (
@@ -31,16 +71,13 @@ function LoginPage() {
                 style={{ backgroundImage: `url(${LoginBg})` }}
             >
                 <div className="w-full max-w-4xl relative">
-                   
                     <div
                         className="absolute inset-0 rounded-xl bg-cover bg-center"
                         style={{ backgroundImage: `url(${LogindevBg})` }}
                     ></div>
 
-                    
                     <div className="relative flex flex-col md:flex-row bg-black/80 backdrop-blur-lg rounded-xl border border-white/20 shadow-2xl overflow-hidden">
 
-                    
                         <div className="w-full md:w-1/2 border-r-0 md:border-r border-white/10">
                             <div className="p-6 border-b border-white/10">
                                 <h2 className="text-2xl font-bold text-white text-center">
@@ -60,8 +97,9 @@ function LoginPage() {
                                         <div className="flex gap-2">
                                             <input
                                                 type="email"
+                                                name="email"
                                                 value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                onChange={handleChange}
                                                 placeholder="name@company.com"
                                                 className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                                 required
@@ -70,16 +108,24 @@ function LoginPage() {
                                                 type="button"
                                                 onClick={handleSendOtp}
                                                 className={`whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-all ${otpSent
-                                                        ? "bg-green-600/20 text-green-400 border border-green-500/30"
-                                                        : "bg-indigo-600 text-white hover:bg-indigo-700"
+                                                    ? "bg-green-600/20 text-green-400 border border-green-500/30"
+                                                    : "bg-indigo-600 text-white hover:bg-indigo-700"
                                                     }`}
+                                                disabled={!email}
                                             >
                                                 {otpSent ? "OTP Sent" : "Send OTP"}
                                             </button>
                                         </div>
+                                        {otpMessage && (
+                                            <p className={`mt-2 text-sm ${otpMessage.includes("successfully")
+                                                ? "text-green-400"
+                                                : "text-red-400"
+                                                }`}>
+                                                {otpMessage}
+                                            </p>
+                                        )}
                                     </div>
 
-                       
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <label className="text-sm font-medium text-white/80">
@@ -91,8 +137,9 @@ function LoginPage() {
                                         </div>
                                         <input
                                             type="password"
+                                            name="password"
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={handleChange}
                                             placeholder="Enter your password"
                                             className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                             required
@@ -105,8 +152,9 @@ function LoginPage() {
                                         </label>
                                         <input
                                             type="text"
+                                            name="otp"
                                             value={otp}
-                                            onChange={(e) => setOtp(e.target.value)}
+                                            onChange={handleChange}
                                             placeholder="Enter 6-digit OTP"
                                             className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                             maxLength={6}
@@ -117,6 +165,7 @@ function LoginPage() {
                                     <button
                                         type="submit"
                                         className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-lg shadow-indigo-500/30 mt-6"
+                                        disabled={!email || !password || !otp}
                                     >
                                         Log In
                                     </button>
@@ -126,13 +175,15 @@ function LoginPage() {
                             <div className="p-4 bg-black/40 border-t border-white/10 text-center md:hidden">
                                 <p className="text-white/60 text-sm">
                                     Don't have an account?{" "}
-                                    <a href="#" className="text-indigo-400 hover:text-indigo-300 font-medium">
+
+                                    <button onClick={handleNavigation} className="text-indigo-400 hover:text-indigo-300 font-medium">
                                         Sign Up
-                                    </a>
+                                    </button>
                                 </p>
                             </div>
                         </div>
 
+                        {/* Right Side - Information */}
                         <div className="hidden md:flex md:w-1/2 flex-col justify-center items-center p-8 bg-gradient-to-br from-indigo-900/40 to-purple-900/40">
                             <div className="max-w-md text-center">
                                 <div className="mb-6 mx-auto w-24 h-24 rounded-full bg-indigo-500/20 flex items-center justify-center">
@@ -166,13 +217,12 @@ function LoginPage() {
                                     </p>
                                 </div>
 
-                                {/* Footer for desktop view */}
                                 <div className="mt-12 pt-4 border-t border-white/10">
                                     <p className="text-white/60 text-sm">
                                         Don't have an account?{" "}
-                                        <a href="#" className="text-indigo-400 hover:text-indigo-300 font-medium">
+                                        <button onClick={handleNavigation} className="text-indigo-400 hover:text-indigo-300 font-medium">
                                             Sign Up
-                                        </a>
+                                        </button>
                                     </p>
                                 </div>
                             </div>
