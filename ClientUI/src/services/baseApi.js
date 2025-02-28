@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 const baseApi = createApi({
     reducerPath: 'api',
     baseQuery: fetchBaseQuery({
-        baseUrl: ' http://localhost:2860/', // Change if needed
+        baseUrl: ' https://teamsyncbackend.onrender.com/', // Change if needed
         credentials: 'include',
         prepareHeaders: (headers) => {
             const token = localStorage.getItem('token');
