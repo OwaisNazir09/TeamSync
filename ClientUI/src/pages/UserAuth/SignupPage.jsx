@@ -6,16 +6,26 @@ import LogindevBg from "./assests/LogindevBg.png";
 import { useSignupMutation, useOtpGeneratorMutation } from "./services/userAuth";
 import { useNavigate } from "react-router-dom";
 
-
 function SignupPage() {
-
     const navigate = useNavigate();
-    const [signup, { isLoading, error }] = useSignupMutation();
+    const [signup, { isLoading, error: apiError }] = useSignupMutation();
     const [generateOtp] = useOtpGeneratorMutation();
     const [otpSent, setOtpSent] = useState(false);
     const [otpMessage, setOtpMessage] = useState("");
     const [otp, setOtp] = useState("");
     const [passwordError, setPasswordError] = useState("");
+    const [ageError, setAgeError] = useState("");
+    const [generalError, setGeneralError] = useState("");
+    const [buttonDisabled, setButtonDisabled] = useState(false);
+    const [otpButtonDisabled, setOtpButtonDisabled] = useState(false);
+    const [passwordRules, setPasswordRules] = useState({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        special: false
+    });
+
     const [formData, setFormData] = useState({
         first_name: "",
         last_name: "",
@@ -26,10 +36,12 @@ function SignupPage() {
         password: "",
         confirm_password: ""
     });
+
     const handleNavigation = () => {
         navigate("/UserAuth/login");
     };
 
+    // Check if email is valid
     useEffect(() => {
         if (formData.email && formData.email.includes('@') && formData.email.includes('.')) {
             setOtpSent(true);
@@ -39,6 +51,7 @@ function SignupPage() {
         }
     }, [formData.email]);
 
+    // Check if password and confirm_password match
     useEffect(() => {
         if (formData.password || formData.confirm_password) {
             if (formData.password !== formData.confirm_password) {
@@ -48,6 +61,53 @@ function SignupPage() {
             }
         }
     }, [formData.password, formData.confirm_password]);
+
+    // Check password requirements
+    useEffect(() => {
+        const password = formData.password;
+        if (password) {
+            const rules = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+
+            setPasswordRules(rules);
+
+            if (!rules.length || !rules.uppercase || !rules.lowercase || !rules.number || !rules.special) {
+                setPasswordError("Password does not meet requirements");
+            } else if (formData.password === formData.confirm_password || !formData.confirm_password) {
+                setPasswordError("");
+            }
+        }
+    }, [formData.password]);
+
+    // Age validation
+    useEffect(() => {
+        if (formData.date_of_birth) {
+            const birthDate = new Date(formData.date_of_birth);
+            const today = new Date();
+            const age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+
+            // If birth month is later in the year or same month but birth day is later
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                if (age - 1 < 18) {
+                    setAgeError("You must be at least 18 years old to register");
+                } else {
+                    setAgeError("");
+                }
+            } else {
+                if (age < 18) {
+                    setAgeError("You must be at least 18 years old to register");
+                } else {
+                    setAgeError("");
+                }
+            }
+        }
+    }, [formData.date_of_birth]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -59,6 +119,12 @@ function SignupPage() {
 
     const handleSendOtp = async () => {
         if (formData.email) {
+            // Disable the OTP button for 7 seconds
+            setOtpButtonDisabled(true);
+            setTimeout(() => {
+                setOtpButtonDisabled(false);
+            }, 7000);
+
             try {
                 await generateOtp(formData.email).unwrap();
                 setOtpMessage("OTP sent successfully! Please check your email.");
@@ -74,11 +140,29 @@ function SignupPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setGeneralError("");
 
+        // Final validation checks
         if (formData.password !== formData.confirm_password) {
             setPasswordError("Passwords do not match");
             return;
         }
+
+        if (ageError) {
+            return;
+        }
+
+        if (!passwordRules.length || !passwordRules.uppercase || !passwordRules.lowercase ||
+            !passwordRules.number || !passwordRules.special) {
+            setPasswordError("Password does not meet requirements");
+            return;
+        }
+
+        // Disable button for 7 seconds
+        setButtonDisabled(true);
+        setTimeout(() => {
+            setButtonDisabled(false);
+        }, 7000);
 
         try {
             const { confirm_password, ...dataToSend } = formData;
@@ -90,8 +174,13 @@ function SignupPage() {
             }
         } catch (err) {
             console.error("Signup failed:", err);
+            setGeneralError(err.data?.message || "Signup failed. Please check your information and try again.");
+            setTimeout(() => {
+                setGeneralError("");
+            }, 5000);
         }
     };
+
     return (
         <>
             <Navbar />
@@ -100,7 +189,6 @@ function SignupPage() {
                 style={{ backgroundImage: `url(${LoginBg})` }}
             >
                 <div className="w-full max-w-5xl relative">
-
                     <div
                         className="absolute inset-0 rounded-xl bg-cover bg-center"
                         style={{ backgroundImage: `url(${LogindevBg})` }}
@@ -119,6 +207,13 @@ function SignupPage() {
                                     Join our platform to get started
                                 </p>
                             </div>
+
+                            {/* General error message */}
+                            {generalError && (
+                                <div className="mx-6 mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                                    <p className="text-red-400 text-sm">{generalError}</p>
+                                </div>
+                            )}
 
                             <div className="p-6">
                                 <form autoComplete="off" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,9 +259,14 @@ function SignupPage() {
                                             name="date_of_birth"
                                             value={formData.date_of_birth}
                                             onChange={handleChange}
-                                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                            className={`w-full bg-white/5 border ${ageError ? 'border-red-500' : 'border-white/20'} rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
                                             required
                                         />
+                                        {ageError && (
+                                            <p className="mt-2 text-sm text-red-400">
+                                                {ageError}
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1 text-white/80">
@@ -204,12 +304,15 @@ function SignupPage() {
                                                 <button
                                                     type="button"
                                                     onClick={handleSendOtp}
-                                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-0.5 px-1.5 text-sm rounded-md hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md shadow-indigo-500/30"
+                                                    disabled={otpButtonDisabled}
+                                                    className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-0.5 px-1.5 text-sm rounded-md transition-all duration-300 shadow-md shadow-indigo-500/30
+                                                        ${otpButtonDisabled
+                                                            ? 'opacity-50 cursor-not-allowed'
+                                                            : 'hover:from-indigo-700 hover:to-purple-700'
+                                                        }`}
                                                 >
-                                                    Send OTP
+                                                    {otpButtonDisabled ? 'Wait...' : 'Send OTP'}
                                                 </button>
-
-
                                             )}
                                         </div>
                                         {otpMessage && (
@@ -218,7 +321,6 @@ function SignupPage() {
                                             </p>
                                         )}
                                     </div>
-
 
                                     {/* OTP Input */}
                                     {otpSent && (
@@ -268,6 +370,27 @@ function SignupPage() {
                                             className={`w-full bg-white/5 border ${passwordError ? 'border-red-500' : 'border-white/20'} rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
                                             required
                                         />
+
+                                        {/* Password requirements */}
+                                        {formData.password && (
+                                            <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                                                <p className={`text-xs ${passwordRules.length ? 'text-green-400' : 'text-white/50'}`}>
+                                                    <span className={passwordRules.length ? 'text-green-400' : 'text-red-400'}>✓</span> At least 8 characters
+                                                </p>
+                                                <p className={`text-xs ${passwordRules.uppercase ? 'text-green-400' : 'text-white/50'}`}>
+                                                    <span className={passwordRules.uppercase ? 'text-green-400' : 'text-red-400'}>✓</span> At least 1 uppercase letter
+                                                </p>
+                                                <p className={`text-xs ${passwordRules.lowercase ? 'text-green-400' : 'text-white/50'}`}>
+                                                    <span className={passwordRules.lowercase ? 'text-green-400' : 'text-red-400'}>✓</span> At least 1 lowercase letter
+                                                </p>
+                                                <p className={`text-xs ${passwordRules.number ? 'text-green-400' : 'text-white/50'}`}>
+                                                    <span className={passwordRules.number ? 'text-green-400' : 'text-red-400'}>✓</span> At least 1 number
+                                                </p>
+                                                <p className={`text-xs ${passwordRules.special ? 'text-green-400' : 'text-white/50'}`}>
+                                                    <span className={passwordRules.special ? 'text-green-400' : 'text-red-400'}>✓</span> At least 1 special character
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Confirm Password */}
@@ -284,9 +407,9 @@ function SignupPage() {
                                             className={`w-full bg-white/5 border ${passwordError ? 'border-red-500' : 'border-white/20'} rounded-lg px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
                                             required
                                         />
-                                        {passwordError && (
+                                        {passwordError && formData.confirm_password && formData.password !== formData.confirm_password && (
                                             <p className="mt-2 text-sm text-red-400">
-                                                {passwordError}
+                                                Passwords do not match
                                             </p>
                                         )}
                                     </div>
@@ -307,14 +430,20 @@ function SignupPage() {
                                     <div className="col-span-1 md:col-span-2 mt-4">
                                         <button
                                             type="submit"
-                                            disabled={!!passwordError}
-                                            className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-indigo-500/30 ${passwordError
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:from-indigo-700 hover:to-purple-700'
+                                            disabled={!!passwordError || !!ageError || buttonDisabled}
+                                            className={`w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-300 shadow-lg shadow-indigo-500/30 
+                                                ${(!!passwordError || !!ageError || buttonDisabled)
+                                                    ? 'opacity-50 cursor-not-allowed'
+                                                    : 'hover:from-indigo-700 hover:to-purple-700'
                                                 }`}
                                         >
-                                            Create Account
+                                            {buttonDisabled ? 'Processing...' : 'Create Account'}
                                         </button>
+                                        {buttonDisabled && (
+                                            <p className="text-center text-white/50 text-xs mt-2">
+                                                Please wait while we process your request...
+                                            </p>
+                                        )}
                                     </div>
                                 </form>
                             </div>
@@ -328,6 +457,7 @@ function SignupPage() {
                                 </p>
                             </div>
                         </div>
+
                         {/* RIGHT SIDE - Community Info */}
                         <div className="hidden md:flex md:w-2/5 flex-col justify-center items-center p-8 bg-gradient-to-br from-indigo-900/40 to-purple-900/40">
                             <div className="max-w-md text-center">

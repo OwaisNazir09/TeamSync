@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -17,16 +17,38 @@ function LoginPage() {
     });
     const [otpSent, setOtpSent] = useState(false);
     const [otpMessage, setOtpMessage] = useState("");
+    const [loginStatus, setLoginStatus] = useState({
+        message: "",
+        type: "" // "success" or "error"
+    });
+    const [isLoading, setIsLoading] = useState(false);
+    const [otpButtonDisabled, setOtpButtonDisabled] = useState(false);
+    const [otpTimer, setOtpTimer] = useState(0);
 
     const { email, password, otp } = formData;
 
+    // OTP button timer
+    useEffect(() => {
+        let interval;
+        if (otpTimer > 0) {
+            interval = setInterval(() => {
+                setOtpTimer(prevTimer => prevTimer - 1);
+            }, 1000);
+        } else if (otpTimer === 0) {
+            setOtpButtonDisabled(false);
+        }
+        return () => clearInterval(interval);
+    }, [otpTimer]);
 
     const handleNavigation = () => {
         navigate("/UserAuth/signup");
     };
 
     const handleSendOtp = async () => {
-        if (email) {
+        if (email && !otpButtonDisabled) {
+            setOtpButtonDisabled(true);
+            setOtpTimer(7); // 7 seconds cooldown
+
             try {
                 await generateOtp(email).unwrap();
                 setOtpSent(true);
@@ -35,7 +57,8 @@ function LoginPage() {
                     setOtpMessage("");
                 }, 9000);
             } catch (err) {
-                setOtpMessage("Failed to send OTP. Please try again.");
+                const errorMessage = err.data?.message || "Failed to send OTP. Please try again.";
+                setOtpMessage(errorMessage);
                 console.error("Failed to send OTP:", err);
             }
         }
@@ -47,19 +70,49 @@ function LoginPage() {
             ...prev,
             [name]: value
         }));
+        // Clear status messages when user starts typing
+        setLoginStatus({ message: "", type: "" });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
+        setLoginStatus({ message: "", type: "" });
+
         try {
             const response = await login(formData).unwrap();
             console.log("login successful:", response);
 
-            if (response.status === "success") {
+            setLoginStatus({
+                message: "Login successful! Redirecting to dashboard...",
+                type: "success"
+            });
+
+            // Give user time to see the success message before redirecting
+            setTimeout(() => {
                 navigate("/dashboard");
-            }
+            }, 2500);
+
         } catch (err) {
             console.error("login failed:", err);
+
+            let errorMessage = "Login failed. Please check your credentials and try again.";
+
+          
+            if (err.data?.message) {
+                errorMessage = err.data.message;
+            } else if (err.status === 400) {
+                errorMessage = "Invalid email, password, or OTP.";
+            } else if (err.status === 404) {
+                errorMessage = "Email not registered.";
+            }
+
+            setLoginStatus({
+                message: errorMessage,
+                type: "error"
+            });
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -89,6 +142,15 @@ function LoginPage() {
                             </div>
 
                             <div className="p-6">
+                                {loginStatus.message && (
+                                    <div className={`mb-4 p-3 rounded-lg ${loginStatus.type === "success"
+                                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                            : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        }`}>
+                                        <p className="text-sm font-medium">{loginStatus.message}</p>
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium mb-2 text-white/80">
@@ -107,19 +169,28 @@ function LoginPage() {
                                             <button
                                                 type="button"
                                                 onClick={handleSendOtp}
-                                                className={`whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-all ${otpSent
-                                                    ? "bg-green-600/20 text-green-400 border border-green-500/30"
-                                                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                                                className={`whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-all ${otpButtonDisabled
+                                                        ? otpSent
+                                                            ? "bg-green-600/20 text-green-400 border border-green-500/30 cursor-not-allowed"
+                                                            : "bg-gray-600 text-white/70 cursor-not-allowed"
+                                                        : otpSent
+                                                            ? "bg-green-600/20 text-green-400 border border-green-500/30"
+                                                            : "bg-indigo-600 text-white hover:bg-indigo-700"
                                                     }`}
-                                                disabled={!email}
+                                                disabled={!email || otpButtonDisabled}
                                             >
-                                                {otpSent ? "OTP Sent" : "Send OTP"}
+                                                {otpButtonDisabled && otpTimer > 0
+                                                    ? `Wait (${otpTimer}s)`
+                                                    : otpSent
+                                                        ? "OTP Sent"
+                                                        : "Send OTP"
+                                                }
                                             </button>
                                         </div>
                                         {otpMessage && (
                                             <p className={`mt-2 text-sm ${otpMessage.includes("successfully")
-                                                ? "text-green-400"
-                                                : "text-red-400"
+                                                    ? "text-green-400"
+                                                    : "text-red-400"
                                                 }`}>
                                                 {otpMessage}
                                             </p>
