@@ -37,5 +37,3 @@ ClientUI/node_modules/
 ClientUI/.env
 ClientUI/package-lock.json
 
-ClientUI/src/services/baseApi.js
-
