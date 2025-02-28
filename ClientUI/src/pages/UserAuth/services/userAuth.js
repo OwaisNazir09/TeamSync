@@ -4,14 +4,16 @@ const homeApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         login: builder.mutation({
             query: (credentials) => ({
-                headers: {
-                    "Content-Type": "application/json"
-                },
                 url: "/auth/login",
                 method: "POST",
                 body: credentials,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                credentials: "include"
             }),
         }),
+
         signup: builder.mutation({
             query: (userData) => ({
                 headers: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import HomeBackground from "./assests/HeroBackground.png";
-
+import { Link } from 'react-router-dom';
 const Hero = () => {
     const [isVisible, setIsVisible] = useState(false);
 
@@ -33,12 +33,16 @@ const Hero = () => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
-                    <button className="group bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center">
-                        Get Started
-                        <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                        </svg>
-                    </button>
+
+                    <Link to="/UserAuth/login">
+                        <button className="group bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center">
+                            Get Started
+                            <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                            </svg>
+                        </button>
+
+                    </Link>
 
                     <button className="text-blue-600 border-2 border-blue-600 px-6 py-3 rounded-md hover:bg-blue-50 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">
                         Learn More
