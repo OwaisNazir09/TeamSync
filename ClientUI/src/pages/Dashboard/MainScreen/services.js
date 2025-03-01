@@ -30,13 +30,22 @@ const dashboardApi = baseApi.injectEndpoints({
                 credentials: "include",
             }),
         }),
+        TaskUpdate: builder.mutation({
+            query: ({ id, status }) => ({
+                url: `/dashboard/updatetask`, 
+                method: "PUT", 
+                credentials: "include",
+                body: { id, status },
+            }),
+        }),
     }),
 });
 
 export const {
     useDashboardstatsQuery,
     useCreatenoteMutation,
-    useDeletenoteMutation
+    useDeletenoteMutation,
+    useTaskUpdateMutation
 } = dashboardApi;
 
 export default dashboardApi;
