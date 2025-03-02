@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import {
     useDashboardstatsQuery, useCreatenoteMutation, useDeletenoteMutation, useTaskUpdateMutation,
@@ -44,7 +42,6 @@ function DashboardHome() {
     const firstname = data ? data.dashboardstats.user.first_name : "Loading...";
     const lastname = data ? data.dashboardstats.user.last_name : "Loading...";
 
-    // Format hours to be more readable
     const formatHours = (hours) => {
         if (hours < 0.01) {
             const minutes = Math.round(hours * 60);
@@ -52,6 +49,33 @@ function DashboardHome() {
         } else {
             return `${hours.toFixed(2)} hour${hours !== 1 ? 's' : ''}`;
         }
+    };
+
+    const formatDate = (date) => {
+        return new Date(date).toISOString().split('T')[0];
+    };
+    const calculateTotalHours = (workLog) => {
+        if (!workLog.startTime) return 0;
+
+        // Convert times consistently
+        const startTime = new Date(workLog.startTime);
+        const endTime = workLog.endTime ? new Date(workLog.endTime) : new Date();
+
+        // Calculate total break time in milliseconds
+        let totalBreakTime = 0;
+        if (workLog.breakTimes && workLog.breakTimes.length > 0) {
+            workLog.breakTimes.forEach(breakPeriod => {
+                if (breakPeriod.start && breakPeriod.end) {
+                    const breakStart = new Date(breakPeriod.start);
+                    const breakEnd = new Date(breakPeriod.end);
+                    totalBreakTime += (breakEnd - breakStart);
+                }
+            });
+        }
+
+        // Calculate total hours (excluding breaks)
+        const totalTimeMs = endTime - startTime - totalBreakTime;
+        return totalTimeMs / (1000 * 60 * 60); // Convert ms to hours
     };
 
     // Handle attendance actions
@@ -137,10 +161,16 @@ function DashboardHome() {
         }
     };
 
-    // Check if the current day already has a work log entry with start and/or end times
+
+    const convertUTCDateToLocalDate = (dateString) => {
+        const date = new Date(dateString);
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    };
+    // Updated checkCurrentDayAttendance function
     const checkCurrentDayAttendance = (workLog) => {
         if (!workLog) return;
 
+        // Format dates consistently to compare only the date portion (not time)
         const today = new Date().toISOString().split('T')[0];
         const workLogDate = new Date(workLog.date).toISOString().split('T')[0];
 
@@ -168,6 +198,8 @@ function DashboardHome() {
         }
     };
 
+
+
     // Load data when available
     useEffect(() => {
         if (data && data.dashboardstats) {
@@ -191,7 +223,7 @@ function DashboardHome() {
 
             if (data.dashboardstats.workLog) {
                 const workLog = data.dashboardstats.workLog;
-                const dateKey = new Date(workLog.date).toISOString().split('T')[0];
+                const dateKey = convertUTCDateToLocalDate(workLog.date).toISOString().split('T')[0];
 
                 checkCurrentDayAttendance(workLog);
 
@@ -211,29 +243,7 @@ function DashboardHome() {
     }, [data]);
 
     // Calculate total hours worked from work log entry
-    const calculateTotalHours = (workLog) => {
-        if (!workLog.startTime) return 0;
 
-        // Get start and end time
-        const startTime = new Date(workLog.startTime);
-        const endTime = workLog.endTime ? new Date(workLog.endTime) : new Date();
-
-        // Calculate total break time in milliseconds
-        let totalBreakTime = 0;
-        if (workLog.breakTimes && workLog.breakTimes.length > 0) {
-            workLog.breakTimes.forEach(breakPeriod => {
-                if (breakPeriod.start && breakPeriod.end) {
-                    const breakStart = new Date(breakPeriod.start);
-                    const breakEnd = new Date(breakPeriod.end);
-                    totalBreakTime += (breakEnd - breakStart);
-                }
-            });
-        }
-
-        // Calculate total hours (excluding breaks)
-        const totalTimeMs = endTime - startTime - totalBreakTime;
-        return totalTimeMs / (1000 * 60 * 60); // Convert ms to hours
-    };
 
     // Get days in month
     const getDaysInMonth = (year, month) => {
@@ -357,63 +367,17 @@ function DashboardHome() {
         <div className="flex flex-col h-screen bg-slate-50">
             {/* Top Navigation Bar */}
             <nav className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8  ">
-                    <div className="flex justify-between h-16  ">
-                        <div className="flex items-center">
-                            {/* Logo */}
-                            <div className="flex-shrink-0">
-                                <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
-                            </div>
-
-                            {/* Navigation Links */}
-                            <div className="hidden md:flex md:space-x-8 md:ml-10">
-                                <button
-                                    onClick={() => setActiveTab("dashboard")}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "dashboard" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <Briefcase className="h-5 w-5 mr-2" />
-                                    Dashboard
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("tasks")}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "tasks" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <CheckCircle className="h-5 w-5 mr-2" />
-                                    Tasks
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("calendar")}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "calendar" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <Calendar className="h-5 w-5 mr-2" />
-                                    Calendar
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("notes")}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notes" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <FileText className="h-5 w-5 mr-2" />
-                                    Notes
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("performance")}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "performance" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <BarChart2 className="h-5 w-5 mr-2" />
-                                    Performance
-                                </button>
-
-                                <button
-                                    onClick={() => { setActiveTab("notices"); setIsNavOpen(false); }}
-                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notices" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-                                >
-                                    <Bell className="h-5 w-5 mr-2" />
-                                    Notices
-                                </button>
-                            </div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between h-16">
+                        {/* Logo - Centered on Mobile */}
+                        <div className="flex-shrink-0 md:hidden flex-1 flex justify-center">
+                            <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
                         </div>
 
-
+                        {/* Logo - Left on Desktop */}
+                        <div className="flex-shrink-0 hidden md:flex">
+                            <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
+                        </div>
 
                         {/* Mobile Menu Button */}
                         <div className="-mr-2 flex md:hidden">
@@ -421,7 +385,53 @@ function DashboardHome() {
                                 onClick={() => setIsNavOpen(!isNavOpen)}
                                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
                             >
-                                {isNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                                <ChevronDown className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        {/* Navigation Links - Hidden on Mobile */}
+                        <div className="hidden md:flex md:space-x-8 md:ml-10">
+                            <button
+                                onClick={() => setActiveTab("dashboard")}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "dashboard" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <Briefcase className="h-5 w-5 mr-2" />
+                                Dashboard
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("tasks")}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "tasks" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Tasks
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("calendar")}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "calendar" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <Calendar className="h-5 w-5 mr-2" />
+                                Calendar
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("notes")}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notes" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <FileText className="h-5 w-5 mr-2" />
+                                Notes
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("performance")}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "performance" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <BarChart2 className="h-5 w-5 mr-2" />
+                                Performance
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab("notices"); setIsNavOpen(false); }}
+                                className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notices" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                <Bell className="h-5 w-5 mr-2" />
+                                Notices
                             </button>
                         </div>
                     </div>
@@ -430,7 +440,7 @@ function DashboardHome() {
                 {/* Mobile Menu */}
                 {isNavOpen && (
                     <div className="md:hidden">
-                        <div className="px-2 pt-2 pb-3   space-y-1 sm:px-3">
+                        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                             <button
                                 onClick={() => { setActiveTab("dashboard"); setIsNavOpen(false); }}
                                 className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "dashboard" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
@@ -513,7 +523,6 @@ function DashboardHome() {
                             </div>
                         </div>
 
-
                         {/* Work stats summary */}
                         {Object.keys(workLogData).length > 0 && (
                             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -554,6 +563,7 @@ function DashboardHome() {
                                 </h2>
                             </div>
                             <div className="p-6">
+                                {/* Search and Filter Section */}
                                 <div className="mb-4 flex justify-between items-center">
                                     <div className="relative w-full max-w-xs">
                                         <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
@@ -577,45 +587,37 @@ function DashboardHome() {
                                     </select>
                                 </div>
 
-                                {displayedTasks.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {displayedTasks.map((task) => (
-                                            <div key={task._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="font-medium text-gray-800">{task.title}</h3>
-                                                        <p className="text-xs text-gray-500 mt-1">Due: {new Date(task.dueDate).toLocaleDateString()}</p>
-                                                    </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${getTaskStatusColor(task.taskstatus)}`}>
-                                                        {task.taskstatus || "Unknown"}
-                                                    </span>
+                                {/* Tasks Container with Scroll */}
+                                <div className="space-y-3 max-h-64 overflow-y-auto">
+                                    {(showAllTasks ? filteredTasks : filteredTasks.slice(0, 5)).map((task) => (
+                                        <div key={task._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-medium text-gray-800">{task.title}</h3>
+                                                    <p className="text-xs text-gray-500 mt-1">Due: {new Date(task.dueDate).toLocaleDateString()}</p>
                                                 </div>
-                                                <div className="mt-3 flex justify-end">
-                                                    <select
-                                                        className="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
-                                                        value={task.taskstatus || ""}
-                                                        onChange={(e) => handleUpdateTaskStatus(task._id, e.target.value)}
-                                                    >
-                                                        <option value="">Update Status</option>
-                                                        <option value="Pending">Pending</option>
-                                                        <option value="In Progress">In Progress</option>
-                                                        <option value="Completed">Completed</option>
-                                                    </select>
-                                                </div>
+                                                <span className={`px-2 py-1 rounded-full text-xs ${getTaskStatusColor(task.taskstatus)}`}>
+                                                    {task.taskstatus || "Unknown"}
+                                                </span>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="py-8 text-center bg-gray-50 rounded-lg">
-                                        <p className="text-gray-600">
-                                            {searchTerm || taskFilter !== "All"
-                                                ? "No tasks match your search or filter"
-                                                : "No tasks available"}
-                                        </p>
-                                    </div>
-                                )}
+                                            <div className="mt-3 flex justify-end">
+                                                <select
+                                                    className="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                                    value={task.taskstatus || ""}
+                                                    onChange={(e) => handleUpdateTaskStatus(task._id, e.target.value)}
+                                                >
+                                                    <option value="">Update Status</option>
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="In Progress">In Progress</option>
+                                                    <option value="Completed">Completed</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
 
-                                {hasMoreTasks && (
+                                {/* Show More / Show Less Button */}
+                                {filteredTasks.length > 5 && (
                                     <div className="mt-4 text-center">
                                         <button
                                             onClick={() => setShowAllTasks(!showAllTasks)}
@@ -624,6 +626,17 @@ function DashboardHome() {
                                             {showAllTasks ? "Show Less" : "Show All Tasks"}
                                             <ChevronDown className={`h-4 w-4 ml-1 transition-transform duration-200 ${showAllTasks ? "transform rotate-180" : ""}`} />
                                         </button>
+                                    </div>
+                                )}
+
+                                {/* No Tasks Message */}
+                                {filteredTasks.length === 0 && (
+                                    <div className="py-8 text-center bg-gray-50 rounded-lg">
+                                        <p className="text-gray-600">
+                                            {searchTerm || taskFilter !== "All"
+                                                ? "No tasks match your search or filter"
+                                                : "No tasks available"}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -770,17 +783,25 @@ function DashboardHome() {
 
                                 {/* Calendar Days */}
                                 {daysInMonth.map((day) => {
-                                    const date = new Date(currentYear, currentMonth - 1, day).toISOString().split('T')[0];
-                                    const hasWorkLog = workLogData[date];
-                                    const isToday = new Date().toISOString().split('T')[0] === date;
+                                    const date = new Date(Date.UTC(currentYear, currentMonth - 1, day)); // Use UTC to avoid timezone issues
+                                    const dateKey = date.toISOString().split('T')[0]; // Consistent YYYY-MM-DD format
+
+                                    const hasWorkLog = workLogData[dateKey];
+
+                                    // Check if the date is today
+                                    const today = new Date();
+                                    const isToday =
+                                        date.getUTCFullYear() === today.getUTCFullYear() &&
+                                        date.getUTCMonth() === today.getUTCMonth() &&
+                                        date.getUTCDate() === today.getUTCDate();
 
                                     return (
                                         <div
                                             key={day}
                                             className={`h-12 sm:h-16 p-1 sm:p-2 border ${isToday ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'
-                                                } rounded-lg hover:border-indigo-300 transition-colors ${selectedDate === date ? 'ring-2 ring-indigo-500' : ''
+                                                } rounded-lg hover:border-indigo-300 transition-colors ${selectedDate === dateKey ? 'ring-2 ring-indigo-500' : ''
                                                 }`}
-                                            onClick={() => setSelectedDate(date)}
+                                            onClick={() => setSelectedDate(dateKey)}
                                         >
                                             <div className="flex justify-between items-start">
                                                 <span
@@ -821,8 +842,13 @@ function DashboardHome() {
                                     </p>
 
                                     {/* Tasks for the Selected Date */}
+
                                     {tasks
-                                        .filter((task) => task.dueDate && task.dueDate.startsWith(selectedDate))
+                                        .filter((task) => {
+                                            const taskDate = new Date(task.dueDate).toLocaleDateString('en-US');
+                                            const selectedDateFormatted = new Date(selectedDate).toLocaleDateString('en-US');
+                                            return taskDate === selectedDateFormatted;
+                                        })
                                         .map((task) => (
                                             <div key={task._id} className="mt-2">
                                                 <div className="flex items-center">
@@ -838,8 +864,8 @@ function DashboardHome() {
                                                 </div>
                                             </div>
                                         ))}
-
                                     {/* Work Log for the Selected Date */}
+
                                     {workLogData[selectedDate] && (
                                         <div className="mt-2">
                                             <div className="flex items-center">
