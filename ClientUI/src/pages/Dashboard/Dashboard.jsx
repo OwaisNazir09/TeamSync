@@ -9,9 +9,9 @@ import ProtectedRoute from "./components/ProtectedRoute"
 function Dashboard() {
     return (
         <div className="h-screen flex flex-col">
-            <div className="w-full">
+            {/* <div className="w-full">
                 <DashboardNavbar />
-            </div>
+            </div> */}
 
             <div className="flex flex-1">
                 <Sidebar />

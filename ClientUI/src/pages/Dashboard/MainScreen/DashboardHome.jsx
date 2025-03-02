@@ -1,6 +1,14 @@
+
+
 import React, { useState, useEffect } from "react";
-import { useDashboardstatsQuery, useCreatenoteMutation, useDeletenoteMutation, useTaskUpdateMutation } from "./services";
-import { Calendar, Bell, CheckCircle, Clock, Search, Trash, ChevronDown } from "lucide-react";
+import {
+    useDashboardstatsQuery, useCreatenoteMutation, useDeletenoteMutation, useTaskUpdateMutation,
+    useStartAttendanceMutation, useStartBreakMutation, useEndBreakMutation, useEndAttendanceMutation,
+} from "./services";
+import {
+    Calendar, Bell, CheckCircle, Clock, Search, Trash, ChevronDown, Play,
+    Pause, StopCircle, Menu, X, User, Briefcase, FileText, BarChart2, ArrowLeft, ArrowRight
+} from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 function DashboardHome() {
@@ -13,67 +21,218 @@ function DashboardHome() {
     const [updateTask] = useTaskUpdateMutation();
     const [performanceData, setPerformanceData] = useState([]);
     const [notices, setNotices] = useState([]);
+    const [workLogData, setWorkLogData] = useState({});
+    const [activeTab, setActiveTab] = useState("dashboard");
+    const [isNavOpen, setIsNavOpen] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState(null);
-    const [currentMonth, setCurrentMonth] = useState(3); // March
-    const [currentYear, setCurrentYear] = useState(2025);
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
     const [searchTerm, setSearchTerm] = useState("");
     const [taskFilter, setTaskFilter] = useState("All");
     const [showAllTasks, setShowAllTasks] = useState(false);
 
+    const [attendanceStatus, setAttendanceStatus] = useState('not_started'); // 'not_started', 'started', 'on_break'
+    const [startAttendance] = useStartAttendanceMutation();
+    const [startBreak] = useStartBreakMutation();
+    const [endBreak] = useEndBreakMutation();
+    const [endAttendance] = useEndAttendanceMutation();
+    const [attendanceDisabled, setAttendanceDisabled] = useState(false);
+    const [hasStartedToday, setHasStartedToday] = useState(false);
+    const [hasEndedToday, setHasEndedToday] = useState(false);
+
     const firstname = data ? data.dashboardstats.user.first_name : "Loading...";
     const lastname = data ? data.dashboardstats.user.last_name : "Loading...";
+
+    // Format hours to be more readable
+    const formatHours = (hours) => {
+        if (hours < 0.01) {
+            const minutes = Math.round(hours * 60);
+            return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+        } else {
+            return `${hours.toFixed(2)} hour${hours !== 1 ? 's' : ''}`;
+        }
+    };
+
+    // Handle attendance actions
+    const handleAttendanceAction = async () => {
+        try {
+            switch (attendanceStatus) {
+                case 'not_started':
+                    if (!hasStartedToday) {
+                        await startAttendance().unwrap();
+                        setAttendanceStatus('started');
+                        setHasStartedToday(true);
+                    }
+                    break;
+                case 'started':
+                    await startBreak().unwrap();
+                    setAttendanceStatus('on_break');
+                    break;
+                case 'on_break':
+                    await endBreak().unwrap();
+                    setAttendanceStatus('started');
+                    break;
+                default:
+                    break;
+            }
+        } catch (err) {
+            console.error('Failed to update attendance:', err);
+        }
+    };
+
+    // Handle end day action
+    const handleEndDay = async () => {
+        try {
+            if (!hasEndedToday) {
+                await endAttendance().unwrap();
+                setAttendanceStatus('not_started');
+                setHasEndedToday(true);
+                setAttendanceDisabled(true);
+            }
+        } catch (err) {
+            console.error('Failed to end attendance:', err);
+        }
+    };
+
+    // Get button text based on attendance status
+    const getButtonText = () => {
+        switch (attendanceStatus) {
+            case 'not_started':
+                return 'Start Work Day';
+            case 'started':
+                return 'Take Break';
+            case 'on_break':
+                return 'End Break';
+            default:
+                return 'Start Work Day';
+        }
+    };
+
+    // Get button icon based on attendance status
+    const getButtonIcon = () => {
+        switch (attendanceStatus) {
+            case 'not_started':
+                return <Play className="h-4 w-4 mr-2" />;
+            case 'started':
+                return <Pause className="h-4 w-4 mr-2" />;
+            case 'on_break':
+                return <Play className="h-4 w-4 mr-2" />;
+            default:
+                return <Play className="h-4 w-4 mr-2" />;
+        }
+    };
+
+    // Get button color based on attendance status
+    const getButtonColor = () => {
+        switch (attendanceStatus) {
+            case 'not_started':
+                return 'bg-emerald-600 hover:bg-emerald-700';
+            case 'started':
+                return 'bg-blue-600 hover:bg-blue-700';
+            case 'on_break':
+                return 'bg-amber-600 hover:bg-amber-700';
+            default:
+                return 'bg-emerald-600 hover:bg-emerald-700';
+        }
+    };
+
+    // Check if the current day already has a work log entry with start and/or end times
+    const checkCurrentDayAttendance = (workLog) => {
+        if (!workLog) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        const workLogDate = new Date(workLog.date).toISOString().split('T')[0];
+
+        if (workLogDate === today) {
+            if (workLog.startTime) {
+                setHasStartedToday(true);
+
+                if (workLog.endTime) {
+                    setHasEndedToday(true);
+                    setAttendanceDisabled(true);
+                    setAttendanceStatus('not_started');
+                } else {
+                    // Day started but not ended
+                    const lastBreak = workLog.breakTimes && workLog.breakTimes.length > 0
+                        ? workLog.breakTimes[workLog.breakTimes.length - 1]
+                        : null;
+
+                    if (lastBreak && lastBreak.start && !lastBreak.end) {
+                        setAttendanceStatus('on_break');
+                    } else {
+                        setAttendanceStatus('started');
+                    }
+                }
+            }
+        }
+    };
 
     // Load data when available
     useEffect(() => {
         if (data && data.dashboardstats) {
-            // Set tasks from dashboardstats
             if (Array.isArray(data.dashboardstats.tasks)) {
                 setTasks(data.dashboardstats.tasks);
             }
 
-            // Set performance data if available
             if (Array.isArray(data.performanceData)) {
                 setPerformanceData(data.performanceData);
             }
 
-            // Set personal notes explicitly checking for array
             if (data.dashboardstats.personalnotes && Array.isArray(data.dashboardstats.personalnotes)) {
                 setPersonalNotes(data.dashboardstats.personalnotes);
-            } else if (data.personalnotes && Array.isArray(data.personalnotes)) {
-                // Alternative location in case the API structure is different
-                setPersonalNotes(data.personalnotes);
             } else {
                 setPersonalNotes([]);
-                console.log("No personal notes found in the API response");
             }
 
-            if (data.dashboardstats.notices && Array.isArray(data.dashboardstats.notices) && data.dashboardstats.notices.length > 0) {
-                const formattedNotices = data.dashboardstats.notices.map(notice => ({
-                    id: notice._id,
-                    title: notice.title,
-                    date: new Date(notice.createdAt).toISOString().split('T')[0],
-                    read: notice.read || false,
-                    message: notice.message
-                }));
-                setNotices(formattedNotices);
-            } else {
-                // Set empty notices array instead of fallback
-                setNotices([]);
+            if (data.dashboardstats.notices && Array.isArray(data.dashboardstats.notices)) {
+                setNotices(data.dashboardstats.notices);
             }
 
-            // Log the structure of the data for debugging
-            console.log("Dashboard data structure:", data);
+            if (data.dashboardstats.workLog) {
+                const workLog = data.dashboardstats.workLog;
+                const dateKey = new Date(workLog.date).toISOString().split('T')[0];
+
+                checkCurrentDayAttendance(workLog);
+
+                const totalHoursWorked = calculateTotalHours(workLog);
+
+                const newWorkLogData = {
+                    [dateKey]: {
+                        totalHours: totalHoursWorked || 0,
+                        breakCount: workLog.breakTimes ? workLog.breakTimes.length : 0,
+                        status: workLog.endTime ? 'completed' : 'active'
+                    }
+                };
+
+                setWorkLogData(newWorkLogData);
+            }
         }
     }, [data]);
 
-    // Work log data
-    const workLog = {
-        "2025-03-01": 5.5,
-        "2025-03-02": 7.0,
-        "2025-03-03": 6.2,
-        "2025-03-04": 4.8,
-        "2025-03-05": 8.0,
+    // Calculate total hours worked from work log entry
+    const calculateTotalHours = (workLog) => {
+        if (!workLog.startTime) return 0;
+
+        // Get start and end time
+        const startTime = new Date(workLog.startTime);
+        const endTime = workLog.endTime ? new Date(workLog.endTime) : new Date();
+
+        // Calculate total break time in milliseconds
+        let totalBreakTime = 0;
+        if (workLog.breakTimes && workLog.breakTimes.length > 0) {
+            workLog.breakTimes.forEach(breakPeriod => {
+                if (breakPeriod.start && breakPeriod.end) {
+                    const breakStart = new Date(breakPeriod.start);
+                    const breakEnd = new Date(breakPeriod.end);
+                    totalBreakTime += (breakEnd - breakStart);
+                }
+            });
+        }
+
+        // Calculate total hours (excluding breaks)
+        const totalTimeMs = endTime - startTime - totalBreakTime;
+        return totalTimeMs / (1000 * 60 * 60); // Convert ms to hours
     };
 
     // Get days in month
@@ -107,13 +266,8 @@ function DashboardHome() {
     const handleSaveNotes = async () => {
         if (notes.title.trim() && notes.text.trim()) {
             try {
-                const result = await createNote(notes).unwrap();
-                console.log("Note created successfully:", result);
-
-                // Clear the form
+                await createNote(notes).unwrap();
                 setNotes({ title: '', text: '' });
-
-                // Refetch data to get updated notes
                 refetch();
             } catch (err) {
                 console.error('Failed to create note:', err);
@@ -123,39 +277,16 @@ function DashboardHome() {
 
     const handleDeleteNote = async (id) => {
         try {
-            const result = await deleteNote(id).unwrap();
-            console.log("Note deleted successfully:", result);
-
-            // Refetch data to get updated notes list
+            await deleteNote(id).unwrap();
             refetch();
         } catch (err) {
             console.error('Failed to delete note:', err);
         }
     };
 
-    const handleMarkNoticeAsRead = async (id) => {
-        try {
-            // Here you would typically call an API to update the notice read status
-            // For example: await updateNoticeReadStatus({ id, read: true }).unwrap();
-
-            // For now, just update the local state
-            setNotices(notices.map(notice =>
-                notice.id === id ? { ...notice, read: true } : notice
-            ));
-
-            // Optionally refetch if you implement the API call
-            // refetch();
-        } catch (err) {
-            console.error('Failed to update notice read status:', err);
-        }
-    };
-
     const handleUpdateTaskStatus = async (taskId, newStatus) => {
         try {
-            // Call API to update task status
             await updateTask({ id: taskId, status: newStatus }).unwrap();
-
-            // Refetch data to get updated tasks
             refetch();
         } catch (err) {
             console.error('Failed to update task status:', err);
@@ -182,9 +313,9 @@ function DashboardHome() {
         if (!status) return "bg-gray-100 text-gray-800";
 
         switch (status.trim()) {
-            case "Completed": return "bg-green-100 text-green-800";
+            case "Completed": return "bg-emerald-100 text-emerald-800";
             case "In Progress": return "bg-blue-100 text-blue-800";
-            case "Pending": return "bg-yellow-100 text-yellow-800";
+            case "Pending": return "bg-amber-100 text-amber-800";
             default: return "bg-gray-100 text-gray-800";
         }
     };
@@ -194,387 +325,798 @@ function DashboardHome() {
         "July", "August", "September", "October", "November", "December"
     ];
 
-    // Format date for display
-    const formatDate = (dateString) => {
-        if (!dateString) return "N/A";
-        try {
-            return new Date(dateString).toLocaleDateString();
-        } catch (e) {
-            return "Invalid Date";
-        }
-    };
+    const unreadNotices = notices.filter(notice => !notice.read).length;
+    const currentDate = new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     if (isLoading) return (
-        <div className="flex items-center justify-center h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <p className="ml-3 text-lg">Loading dashboard...</p>
+        <div className="flex items-center justify-center h-screen bg-slate-50">
+            <div className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
+                <p className="text-lg font-medium text-gray-700">Loading your dashboard...</p>
+                <p className="text-sm text-gray-500 mt-2">Please wait a moment</p>
+            </div>
         </div>
     );
 
     if (error && error.status !== 401) return (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            <h2 className="text-lg font-bold mb-2">Error Loading Dashboard</h2>
-            <p>Error: {error.message || "Unknown error occurred"}</p>
-            <button className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md" onClick={() => refetch()}>
-                Try Again
-            </button>
+        <div className="flex items-center justify-center h-screen bg-slate-50">
+            <div className="p-8 bg-white border border-red-200 rounded-xl shadow-lg max-w-md">
+                <h2 className="text-xl font-bold mb-4 text-red-600">Something went wrong</h2>
+                <p className="text-gray-600 mb-6">Error: {error.message || "Unknown error occurred"}</p>
+                <button
+                    className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium shadow-md hover:bg-indigo-700 transition-colors"
+                    onClick={() => refetch()}
+                >
+                    Try Again
+                </button>
+            </div>
         </div>
     );
 
-    const unreadNotices = notices.filter(notice => !notice.read).length;
-    const currentDate = new Date().toLocaleDateString("en-US", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    // Debugging info - to be removed in production
-    console.log("Personal notes being rendered:", personalnotes);
-
     return (
-        <div className="p-2 sm:p-4 bg-gray-50 min-h-screen">
-            {/* Header with welcome message and profile */}
-            <div className="mb-4 sm:mb-6 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-3 sm:p-4 rounded-lg shadow-sm">
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Welcome, <span className="text-blue-600">{firstname} {lastname}</span></h1>
-                    <p className="text-gray-600 mt-1 text-sm sm:text-base">{currentDate}</p>
-                </div>
+        <div className="flex flex-col h-screen bg-slate-50">
+            {/* Top Navigation Bar */}
+            <nav className="bg-white shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8  ">
+                    <div className="flex justify-between h-16  ">
+                        <div className="flex items-center">
+                            {/* Logo */}
+                            <div className="flex-shrink-0">
+                                <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
+                            </div>
 
-                <div className="flex items-center mt-3 md:mt-0">
-                    <div className="relative mr-4">
-                        <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600 cursor-pointer hover:text-blue-500 transition-colors" />
-                        {unreadNotices > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                                {unreadNotices}
-                            </span>
-                        )}
-                    </div>
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-0.5 rounded-full shadow">
-                        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-lg">
-                            {firstname.charAt(0)}{lastname.charAt(0)}
+                            {/* Navigation Links */}
+                            <div className="hidden md:flex md:space-x-8 md:ml-10">
+                                <button
+                                    onClick={() => setActiveTab("dashboard")}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "dashboard" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <Briefcase className="h-5 w-5 mr-2" />
+                                    Dashboard
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("tasks")}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "tasks" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <CheckCircle className="h-5 w-5 mr-2" />
+                                    Tasks
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("calendar")}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "calendar" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <Calendar className="h-5 w-5 mr-2" />
+                                    Calendar
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("notes")}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notes" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <FileText className="h-5 w-5 mr-2" />
+                                    Notes
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("performance")}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "performance" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <BarChart2 className="h-5 w-5 mr-2" />
+                                    Performance
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab("notices"); setIsNavOpen(false); }}
+                                    className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${activeTab === "notices" ? "border-b-2 border-indigo-500 text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+                                >
+                                    <Bell className="h-5 w-5 mr-2" />
+                                    Notices
+                                </button>
+                            </div>
+                        </div>
+
+
+
+                        {/* Mobile Menu Button */}
+                        <div className="-mr-2 flex md:hidden">
+                            <button
+                                onClick={() => setIsNavOpen(!isNavOpen)}
+                                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+                            >
+                                {isNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {/* Tasks Card */}
-                <div className="bg-white shadow-md rounded-lg overflow-hidden col-span-1 lg:col-span-2">
-                    <div className="bg-gradient-to-r from-blue-500 to-blue-100 py-2 sm:py-3 px-3 sm:px-4">
-                        <h2 className="text-base sm:text-lg font-semibold text-white flex items-center">
-                            <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" /> My Tasks
-                        </h2>
+                {/* Mobile Menu */}
+                {isNavOpen && (
+                    <div className="md:hidden">
+                        <div className="px-2 pt-2 pb-3   space-y-1 sm:px-3">
+                            <button
+                                onClick={() => { setActiveTab("dashboard"); setIsNavOpen(false); }}
+                                className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "dashboard" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                <Briefcase className="h-5 w-5 inline-block mr-2" />
+                                Dashboard
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab("tasks"); setIsNavOpen(false); }}
+                                className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "tasks" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                <CheckCircle className="h-5 w-5 inline-block mr-2" />
+                                Tasks
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab("calendar"); setIsNavOpen(false); }}
+                                className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "calendar" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                <Calendar className="h-5 w-5 inline-block mr-2" />
+                                Calendar
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab("notes"); setIsNavOpen(false); }}
+                                className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "notes" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                <FileText className="h-5 w-5 inline-block mr-2" />
+                                Notes
+                            </button>
+                            <button
+                                onClick={() => { setActiveTab("performance"); setIsNavOpen(false); }}
+                                className={`block px-3 py-2 rounded-md text-base font-medium ${activeTab === "performance" ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                            >
+                                <BarChart2 className="h-5 w-5 inline-block mr-2" />
+                                Performance
+                            </button>
+                        </div>
                     </div>
-                    <div className="p-3 sm:p-4">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-2 sm:space-y-0">
-                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                                <div className="relative">
-                                    <Search className="h-4 w-4 text-gray-400 absolute left-2 top-2.5" />
+                )}
+            </nav>
+
+            {/* Main Content */}
+            <main className="flex-1 p-6">
+                {/* Attendance Card - Always visible */}
+                <div className="mb-6 bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="p-6">
+                        <div className="flex flex-col md:flex-row justify-between items-center">
+                            <div className="mb-4 md:mb-0">
+                                <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                                    <Clock className="h-5 w-5 mr-2 text-indigo-600" /> Attendance Tracker
+                                </h2>
+                                <p className="text-gray-600 mt-1">
+                                    {attendanceStatus === 'not_started' ?
+                                        hasEndedToday ? 'You have completed your work day' : 'Start your day to track your working hours' :
+                                        attendanceStatus === 'started' ?
+                                            'Currently working' :
+                                            'Currently on break'}
+                                </p>
+                            </div>
+
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={handleAttendanceAction}
+                                    disabled={attendanceDisabled}
+                                    className={`px-5 py-2.5 rounded-lg text-white font-medium flex items-center transition-colors ${getButtonColor()} ${attendanceDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    {getButtonIcon()}
+                                    {getButtonText()}
+                                </button>
+
+                                {attendanceStatus !== 'not_started' && (
+                                    <button
+                                        onClick={handleEndDay}
+                                        disabled={hasEndedToday}
+                                        className={`px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center transition-colors ${hasEndedToday ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <StopCircle className="h-4 w-4 mr-2" />
+                                        End Day
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+
+                        {/* Work stats summary */}
+                        {Object.keys(workLogData).length > 0 && (
+                            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {Object.entries(workLogData).map(([date, data]) => (
+                                    <div key={date} className="bg-indigo-50 rounded-lg p-4">
+                                        <p className="text-sm text-indigo-700 font-medium">{new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                                        <div className="mt-2 space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm text-gray-600">Hours worked:</p>
+                                                <p className="text-sm font-medium">{formatHours(data.totalHours)}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm text-gray-600">Breaks taken:</p>
+                                                <p className="text-sm font-medium">{data.breakCount}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-sm text-gray-600">Status:</p>
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${data.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                    {data.status === 'completed' ? 'Completed' : 'Active'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Dashboard Content */}
+                {activeTab === "dashboard" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Tasks Overview Card */}
+                        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                                <h2 className="text-lg font-semibold text-white flex items-center">
+                                    <CheckCircle className="h-5 w-5 mr-2" /> Tasks Overview
+                                </h2>
+                            </div>
+                            <div className="p-6">
+                                <div className="mb-4 flex justify-between items-center">
+                                    <div className="relative w-full max-w-xs">
+                                        <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search tasks..."
+                                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                    <select
+                                        className="ml-2 border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                        value={taskFilter}
+                                        onChange={(e) => setTaskFilter(e.target.value)}
+                                    >
+                                        <option value="All">All</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+
+                                {displayedTasks.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {displayedTasks.map((task) => (
+                                            <div key={task._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-medium text-gray-800">{task.title}</h3>
+                                                        <p className="text-xs text-gray-500 mt-1">Due: {new Date(task.dueDate).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${getTaskStatusColor(task.taskstatus)}`}>
+                                                        {task.taskstatus || "Unknown"}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 flex justify-end">
+                                                    <select
+                                                        className="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                                        value={task.taskstatus || ""}
+                                                        onChange={(e) => handleUpdateTaskStatus(task._id, e.target.value)}
+                                                    >
+                                                        <option value="">Update Status</option>
+                                                        <option value="Pending">Pending</option>
+                                                        <option value="In Progress">In Progress</option>
+                                                        <option value="Completed">Completed</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center bg-gray-50 rounded-lg">
+                                        <p className="text-gray-600">
+                                            {searchTerm || taskFilter !== "All"
+                                                ? "No tasks match your search or filter"
+                                                : "No tasks available"}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {hasMoreTasks && (
+                                    <div className="mt-4 text-center">
+                                        <button
+                                            onClick={() => setShowAllTasks(!showAllTasks)}
+                                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center mx-auto"
+                                        >
+                                            {showAllTasks ? "Show Less" : "Show All Tasks"}
+                                            <ChevronDown className={`h-4 w-4 ml-1 transition-transform duration-200 ${showAllTasks ? "transform rotate-180" : ""}`} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {/* Performance Card */}
+                        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div className="bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-4">
+                                <h2 className="text-lg font-semibold text-white flex items-center">
+                                    <BarChart2 className="h-5 w-5 mr-2" /> Performance Overview
+                                </h2>
+                            </div>
+                            <div className="p-6">
+                                {performanceData && performanceData.length > 0 ? (
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={performanceData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    outerRadius={80}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                >
+                                                    {performanceData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip formatter={(value) => [`${value} tasks`, 'Count']} />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center bg-gray-50 rounded-lg">
+                                        <p className="text-gray-600">No performance data available</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Notes Card */}
+                        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4">
+                                <h2 className="text-lg font-semibold text-white flex items-center">
+                                    <FileText className="h-5 w-5 mr-2" /> Quick Notes
+                                </h2>
+                            </div>
+                            <div className="p-6">
+                                <div className="space-y-4">
                                     <input
                                         type="text"
-                                        placeholder="Search tasks..."
-                                        className="w-full sm:w-auto pl-8 pr-2 py-1 border rounded-md text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                        placeholder="Note title"
+                                        value={notes.title}
+                                        onChange={(e) => setNotes({ ...notes, title: e.target.value })}
+                                    />
+                                    <textarea
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 h-24 resize-none"
+                                        placeholder="Write your note here..."
+                                        value={notes.text}
+                                        onChange={(e) => setNotes({ ...notes, text: e.target.value })}
+                                    ></textarea>
+                                    <button
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors"
+                                        onClick={handleSaveNotes}
+                                        disabled={isCreatingNote || !notes.title || !notes.text}
+                                    >
+                                        {isCreatingNote ? "Saving..." : "Save Note"}
+                                    </button>
+                                </div>
+
+                                <div className="mt-6 space-y-3">
+                                    {personalnotes.length > 0 ? (
+                                        personalnotes.map((note) => (
+                                            <div key={note._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-medium text-gray-800">{note.title}</h3>
+                                                        <p className="text-sm text-gray-600 mt-1">{note.text}</p>
+                                                        <p className="text-xs text-gray-500 mt-2">
+                                                            {new Date(note.createdAt).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleDeleteNote(note._id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="py-6 text-center bg-gray-50 rounded-lg">
+                                            <p className="text-gray-600">No notes available</p>
+                                            <p className="text-sm text-gray-500 mt-1">Add a new note to see it here</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === "calendar" && (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="p-4 sm:p-6">
+                            {/* Month Navigation */}
+                            <div className="flex justify-between items-center mb-4 sm:mb-6">
+                                <button
+                                    onClick={() => changeMonth(-1)}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors"
+                                >
+                                    <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                                </button>
+                                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                                    {monthNames[currentMonth - 1]} {currentYear}
+                                </h2>
+                                <button
+                                    onClick={() => changeMonth(1)}
+                                    className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors"
+                                >
+                                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                                </button>
+                            </div>
+
+                            {/* Calendar Grid */}
+                            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                                {/* Day Labels */}
+                                {dayLabels.map((day) => (
+                                    <div key={day} className="text-center p-1 sm:p-2 text-xs sm:text-sm font-medium text-gray-600">
+                                        {day}
+                                    </div>
+                                ))}
+
+                                {/* Empty Cells for Days Before the First Day of the Month */}
+                                {Array.from({ length: firstDayOfMonth }, (_, i) => (
+                                    <div key={`empty-${i}`} className="h-12 sm:h-16 border border-gray-100 rounded-lg bg-gray-50 opacity-50"></div>
+                                ))}
+
+                                {/* Calendar Days */}
+                                {daysInMonth.map((day) => {
+                                    const date = new Date(currentYear, currentMonth - 1, day).toISOString().split('T')[0];
+                                    const hasWorkLog = workLogData[date];
+                                    const isToday = new Date().toISOString().split('T')[0] === date;
+
+                                    return (
+                                        <div
+                                            key={day}
+                                            className={`h-12 sm:h-16 p-1 sm:p-2 border ${isToday ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200'
+                                                } rounded-lg hover:border-indigo-300 transition-colors ${selectedDate === date ? 'ring-2 ring-indigo-500' : ''
+                                                }`}
+                                            onClick={() => setSelectedDate(date)}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <span
+                                                    className={`inline-block rounded-full h-5 w-5 sm:h-6 sm:w-6 text-center text-xs sm:text-sm ${isToday ? 'bg-indigo-600 text-white' : 'text-gray-700'
+                                                        }`}
+                                                >
+                                                    {day}
+                                                </span>
+                                                {hasWorkLog && (
+                                                    <span
+                                                        className={`inline-block h-2 w-2 rounded-full ${hasWorkLog.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
+                                                            }`}
+                                                    ></span>
+                                                )}
+                                            </div>
+
+                                            {/* Work Log Details (Hidden on Mobile) */}
+                                            {hasWorkLog && (
+                                                <div className="mt-1 text-xs text-gray-600 hidden sm:block">
+                                                    {formatHours(hasWorkLog.totalHours)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Selected Date Details */}
+                            {selectedDate && (
+                                <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                    <p className="font-semibold text-indigo-800 text-sm sm:text-base">
+                                        {new Date(selectedDate).toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                        })}
+                                    </p>
+
+                                    {/* Tasks for the Selected Date */}
+                                    {tasks
+                                        .filter((task) => task.dueDate && task.dueDate.startsWith(selectedDate))
+                                        .map((task) => (
+                                            <div key={task._id} className="mt-2">
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-indigo-500 mr-1" />
+                                                    <span className="text-sm">{task.title}</span>
+                                                    <span
+                                                        className={`ml-2 px-2 py-1 rounded-full text-xs ${getTaskStatusColor(
+                                                            task.taskstatus
+                                                        )}`}
+                                                    >
+                                                        {task.taskstatus || "Unknown"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                    {/* Work Log for the Selected Date */}
+                                    {workLogData[selectedDate] && (
+                                        <div className="mt-2">
+                                            <div className="flex items-center">
+                                                <Clock className="h-4 w-4 text-indigo-500 mr-1" />
+                                                <span className="text-sm">
+                                                    Hours worked: <span className="font-medium">{formatHours(workLogData[selectedDate].totalHours)}</span>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <Pause className="h-4 w-4 text-indigo-500 mr-1" />
+                                                <span className="text-sm">
+                                                    Breaks taken: <span className="font-medium">{workLogData[selectedDate].breakCount}</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Notes Tab */}
+                {activeTab === "notes" && (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="p-6">
+                            <div className="mb-6">
+                                <h2 className="text-xl font-semibold text-gray-800 mb-4">Create New Note</h2>
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                        placeholder="Note title"
+                                        value={notes.title}
+                                        onChange={(e) => setNotes({ ...notes, title: e.target.value })}
+                                    />
+                                    <textarea
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500 h-32 resize-none"
+                                        placeholder="Write your detailed note here..."
+                                        value={notes.text}
+                                        onChange={(e) => setNotes({ ...notes, text: e.target.value })}
+                                    ></textarea>
+                                    <button
+                                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
+                                        onClick={handleSaveNotes}
+                                        disabled={isCreatingNote || !notes.title || !notes.text}
+                                    >
+                                        {isCreatingNote ? "Saving..." : "Save Note"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-200 pt-6">
+                                <h2 className="text-xl font-semibold text-gray-800 mb-4">Your Notes</h2>
+
+                                {personalnotes.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {personalnotes.map((note) => (
+                                            <div key={note._id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-medium text-gray-800">{note.title}</h3>
+                                                        <p className="text-sm text-gray-600 mt-2">{note.text}</p>
+                                                        <p className="text-xs text-gray-500 mt-3">
+                                                            Created: {new Date(note.createdAt).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleDeleteNote(note._id)}
+                                                        className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                                                    >
+                                                        <Trash className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center bg-gray-50 rounded-lg">
+                                        <p className="text-gray-600">No notes available</p>
+                                        <p className="text-sm text-gray-500 mt-1">Create a new note to see it here</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Tasks Tab */}
+                {activeTab === "tasks" && (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="p-6">
+                            <div className="mb-6 flex justify-between items-center">
+                                <div className="relative max-w-md w-full">
+                                    <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search tasks by title..."
+                                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
                                 </div>
                                 <select
-                                    className="border rounded-md text-sm px-2 py-1 focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+                                    className="ml-2 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
                                     value={taskFilter}
                                     onChange={(e) => setTaskFilter(e.target.value)}
                                 >
-                                    <option value="All">All</option>
+                                    <option value="All">All Status</option>
                                     <option value="Pending">Pending</option>
                                     <option value="In Progress">In Progress</option>
                                     <option value="Completed">Completed</option>
                                 </select>
                             </div>
-                        </div>
 
-                        <div className="rounded-lg border border-gray-200 overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-gray-50">
-                                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-medium text-gray-600">Task</th>
-                                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-medium text-gray-600">Status</th>
-                                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-medium text-gray-600">Due Date</th>
-                                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-medium text-gray-600">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {displayedTasks.length > 0 ? (
-                                        displayedTasks.map((task) => (
-                                            <tr key={task._id} className="border-t border-gray-200 hover:bg-gray-50 transition-colors">
-                                                <td className="py-2 sm:py-3 px-2 sm:px-4">{task.title}</td>
-                                                <td className="py-2 sm:py-3 px-2 sm:px-4">
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${getTaskStatusColor(task.taskstatus)}`}>
-                                                        {task.taskstatus || "Unknown"}
-                                                    </span>
-                                                </td>
-                                                <td className="py-2 sm:py-3 px-2 sm:px-4">{formatDate(task.dueDate)}</td>
-                                                <td className="py-2 sm:py-3 px-2 sm:px-4">
-                                                    <div className="relative inline-block text-left">
-                                                        <select
-                                                            className="border border-gray-300 rounded-md text-sm px-2 py-1"
-                                                            value={task.taskstatus || ""}
-                                                            onChange={(e) => handleUpdateTaskStatus(task._id, e.target.value)}
-                                                        >
-                                                            <option value="">Select Status</option>
-                                                            <option value="Pending">Pending</option>
-                                                            <option value="In Progress">In Progress</option>
-                                                            <option value="Completed">Completed</option>
-                                                        </select>
+                            {filteredTasks.length > 0 ? (
+                                <div className="space-y-4">
+                                    {filteredTasks.map((task) => (
+                                        <div key={task._id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
+                                            <div className="flex flex-col md:flex-row justify-between md:items-center">
+                                                <div className="mb-3 md:mb-0">
+                                                    <h3 className="font-medium text-gray-800">{task.title}</h3>
+                                                    <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                                    <div className="flex items-center mt-2">
+                                                        <Clock className="h-4 w-4 text-gray-500 mr-1" />
+                                                        <p className="text-xs text-gray-500">
+                                                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                                                        </p>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="4" className="py-6 text-center text-gray-500">
-                                                {searchTerm || taskFilter !== "All"
-                                                    ? "No tasks match your search or filter"
-                                                    : "No tasks available"}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {hasMoreTasks && (
-                            <div className="mt-3 text-center">
-                                <button
-                                    onClick={() => setShowAllTasks(!showAllTasks)}
-                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center mx-auto"
-                                >
-                                    {showAllTasks ? "Show Less" : "Show All"}
-                                    <ChevronDown className={`h-4 w-4 ml-1 transition-transform duration-200 ${showAllTasks ? "transform rotate-180" : ""}`} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Performance Charts */}
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-green-500 to-green-100 py-2 sm:py-3 px-3 sm:px-4">
-                        <h2 className="text-base sm:text-lg font-semibold text-white">Task Performance</h2>
-                    </div>
-                    <div className="p-3 sm:p-4">
-                        <div className="h-48 sm:h-64">
-                            {performanceData && performanceData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={performanceData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={40}
-                                            outerRadius={60}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            label={({ name, percent }) =>
-                                                `${name} ${(percent * 100).toFixed(0)}%`
-                                            }
-                                        >
-                                            {performanceData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color || "#999"} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip formatter={(value) => [`${value} tasks`, 'Count']} />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex h-full items-center justify-center text-gray-500">
-                                    No performance data available
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Calendar Card */}
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-purple-500 to-purple-100 py-2 sm:py-3 px-3 sm:px-4">
-                        <h2 className="text-base sm:text-lg font-semibold text-white flex items-center">
-                            <Calendar className="h-4 w-4 sm:h-5 sm:w-5 mr-2" /> Calendar
-                        </h2>
-                    </div>
-                    <div className="p-3 sm:p-4">
-                        <div className="flex justify-between items-center mb-3">
-                            <button
-                                className="p-1 rounded-md hover:bg-gray-100"
-                                onClick={() => changeMonth(-1)}
-                            >
-                                &lt;
-                            </button>
-                            <span className="font-medium">{monthNames[currentMonth - 1]} {currentYear}</span>
-                            <button
-                                className="p-1 rounded-md hover:bg-gray-100"
-                                onClick={() => changeMonth(1)}
-                            >
-                                &gt;
-                            </button>
-                        </div>
-
-                        {/* Day labels */}
-                        <div className="grid grid-cols-7 gap-1 mb-2">
-                            {dayLabels.map(day => (
-                                <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
-                                    {day}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Calendar grid */}
-                        <div className="grid grid-cols-7 gap-1">
-                            {/* Empty cells for days before the 1st of the month */}
-                            {Array.from({ length: firstDayOfMonth }, (_, i) => (
-                                <div key={`empty-${i}`} className="h-6 sm:h-9"></div>
-                            ))}
-
-                            {/* Actual days */}
-                            {daysInMonth.map((day) => {
-                                const dateKey = `${currentYear}-${currentMonth.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-                                const hasWorkLog = workLog[dateKey] !== undefined;
-                                const isToday = dateKey === "2025-03-01"; // Just for example
-
-                                return (
-                                    <div
-                                        key={day}
-                                        className={`relative h-6 sm:h-9 rounded-md text-center cursor-pointer transition-all flex items-center justify-center
-                                          ${hasWorkLog ? "bg-purple-100 hover:bg-purple-200" : "hover:bg-gray-100"}
-                                          ${isToday ? "border-2 border-purple-500 font-bold" : ""}
-                                        `}
-                                        onClick={() => setSelectedDate(dateKey)}
-                                    >
-                                        <span className={`text-xs sm:text-sm ${hasWorkLog ? "text-purple-800" : ""}`}>{day}</span>
-                                        {hasWorkLog && (
-                                            <span className="absolute bottom-1 left-1/2 transform -translate-x-1/2 h-1 w-1 bg-purple-500 rounded-full"></span>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        {selectedDate && workLog[selectedDate] !== undefined && (
-                            <div className="mt-4 p-2 sm:p-3 bg-purple-50 rounded-md border border-purple-200">
-                                <p className="font-semibold text-purple-800 text-xs sm:text-sm">{selectedDate}</p>
-                                <div className="flex items-center mt-1">
-                                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 text-purple-500" />
-                                    <p className="text-gray-800 text-xs sm:text-sm">Hours worked: <span className="font-medium">{workLog[selectedDate]}</span></p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Personal Notes Card */}
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-yellow-500 to-yellow-100 py-3 px-4">
-                        <h2 className="text-lg font-semibold text-white">Personal Notes</h2>
-                    </div>
-                    <div className="p-4">
-                        <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Note title"
-                                className="w-full p-2 border rounded-md mb-2 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-300"
-                                value={notes.title}
-                                onChange={(e) => setNotes({ ...notes, title: e.target.value })}
-                            />
-                            <textarea
-                                className="w-full p-2 border rounded-md h-24 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-300"
-                                placeholder="Type your note here..."
-                                value={notes.text}
-                                onChange={(e) => setNotes({ ...notes, text: e.target.value })}
-                            />
-                            <button
-                                className="mt-2 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors w-full"
-                                onClick={handleSaveNotes}
-                                disabled={isCreatingNote}
-                            >
-                                {isCreatingNote ? 'Saving...' : 'Save Note'}
-                            </button>
-                        </div>
-
-                        {/* Saved Notes */}
-                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                            {personalnotes && personalnotes.length > 0 ? (
-                                personalnotes.map((note) => (
-                                    <div key={note._id || note.id} className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400 hover:shadow-md transition-shadow">
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-xs text-gray-500">
-                                                {note.createdAt ? new Date(note.createdAt).toLocaleDateString() : "No date"}
-                                            </p>
-                                            <button
-                                                className="text-red-500 hover:text-red-700 transition-colors"
-                                                onClick={() => handleDeleteNote(note._id || note.id)}
-                                                title="Delete note"
-                                            >
-                                                <Trash className="h-4 w-4" />
-                                            </button>
+                                                </div>
+                                                <div className="flex items-center space-x-3">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getTaskStatusColor(task.taskstatus)}`}>
+                                                        {task.taskstatus || "Pending"}
+                                                    </span>
+                                                    <select
+                                                        className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-500"
+                                                        value={task.taskstatus || ""}
+                                                        onChange={(e) => handleUpdateTaskStatus(task._id, e.target.value)}
+                                                    >
+                                                        <option value="">Update Status</option>
+                                                        <option value="Pending">Pending</option>
+                                                        <option value="In Progress">In Progress</option>
+                                                        <option value="Completed">Completed</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <h3 className="font-medium mt-1 text-yellow-800">{note.title}</h3>
-                                        <p className="mt-1 text-sm">{note.text}</p>
-                                    </div>
-                                ))
+                                    ))}
+                                </div>
                             ) : (
-                                <div className="text-center py-6 bg-gray-50 rounded-lg">
-                                    <p className="text-gray-500">No saved notes</p>
-                                    <p className="text-sm text-gray-400 mt-1">Create your first note above</p>
+                                <div className="py-12 text-center bg-gray-50 rounded-lg">
+                                    <p className="text-gray-600">
+                                        {searchTerm || taskFilter !== "All"
+                                            ? "No tasks match your search or filter"
+                                            : "No tasks available"}
+                                    </p>
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        {searchTerm || taskFilter !== "All"
+                                            ? "Try adjusting your search terms or filter"
+                                            : "Tasks assigned to you will appear here"}
+                                    </p>
                                 </div>
                             )}
                         </div>
                     </div>
-                </div>
+                )}
+                {/* Notices Tab */}
+                {activeTab === "notices" && (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-6">Notices</h2>
 
-                {/* Notices Card */}
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                    <div className="bg-gradient-to-r from-red-500 to-red-100 py-3 px-4">
-                        <h2 className="text-lg font-semibold text-white flex items-center">
-                            <Bell className="h-5 w-5 mr-2" /> Notices
-                            {unreadNotices > 0 && (
-                                <span className="ml-2 bg-white text-red-600 text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                    {unreadNotices}
-                                </span>
-                            )}
-                        </h2>
-                    </div>
-                    <div className="p-4">
-                        {notices.length > 0 ? (
-                            <ul className="space-y-3">
-                                {notices.map((notice) => (
-                                    <li
-                                        key={notice.id}
-                                        className={`p-3 border-l-4 rounded-lg cursor-pointer transition-all ${notice.read
-                                            ? 'border-gray-300 bg-gray-50 hover:bg-gray-100'
-                                            : 'border-red-500 bg-red-50 hover:bg-red-100'
-                                            }`}
-                                        onClick={() => handleMarkNoticeAsRead(notice.id)}
-                                    >
-                                        <div className="flex items-start">
-                                            <div className="flex-grow">
-                                                <p className={`font-medium ${notice.read ? 'text-gray-700' : 'text-red-800'}`}>
-                                                    {notice.title}
-                                                </p>
-                                                <p className="text-sm text-gray-500 mt-1">Posted: {notice.date}</p>
-                                                {notice.message && (
-                                                    <p className="text-sm mt-2">{notice.message}</p>
+                            {notices.length > 0 ? (
+                                <div className="space-y-4">
+                                    {notices.map((notice) => (
+                                        <div
+                                            key={notice.id}
+                                            className={`p-4 rounded-lg border-l-4 ${notice.read ? "border-gray-300 bg-gray-50" : "border-indigo-500 bg-indigo-50"
+                                                }`}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-medium text-gray-800">{notice.title}</h3>
+                                                    <p className="text-sm text-gray-600 mt-1">{notice.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-2">
+                                                        Posted: {notice.date}
+                                                    </p>
+                                                </div>
+                                                {!notice.read && (
+                                                    <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
                                                 )}
                                             </div>
-                                            {!notice.read && (
-                                                <div className="h-2 w-2 rounded-full bg-red-500 mt-1 animate-pulse"></div>
-                                            )}
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="text-center py-6 bg-gray-50 rounded-lg">
-                                <p className="text-gray-500">No current notices</p>
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center bg-gray-50 rounded-lg">
+                                    <p className="text-gray-600">No notices available</p>
+                                    <p className="text-sm text-gray-500 mt-1">New notices will appear here</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            </div>
+                )}
+                {/* Performance Tab */}
+                {activeTab === "performance" && (
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div className="p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-6">Performance Metrics</h2>
+
+                            {performanceData && performanceData.length > 0 ? (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="h-72">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={performanceData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    outerRadius={90}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                >
+                                                    {performanceData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip formatter={(value) => [`${value} tasks`, 'Count']} />
+                                                <Legend verticalAlign="bottom" height={36} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <h3 className="font-medium text-gray-800 mb-4">Task Completion Summary</h3>
+                                        <div className="space-y-4">
+                                            {performanceData.map((item, index) => (
+                                                <div key={index} className="flex items-center">
+                                                    <div
+                                                        className="h-3 w-3 rounded-full mr-2"
+                                                        style={{ backgroundColor: item.color || `#${Math.floor(Math.random() * 16777215).toString(16)}` }}
+                                                    ></div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium">{item.name}</span>
+                                                            <span className="text-sm text-gray-600">{item.value} tasks</span>
+                                                        </div>
+                                                        <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full"
+                                                                style={{
+                                                                    width: `${(item.value / performanceData.reduce((acc, curr) => acc + curr.value, 0)) * 100}%`,
+                                                                    backgroundColor: item.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`
+                                                                }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="py-12 text-center bg-gray-50 rounded-lg">
+                                    <p className="text-gray-600">No performance data available</p>
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        Complete tasks to see your performance metrics
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }

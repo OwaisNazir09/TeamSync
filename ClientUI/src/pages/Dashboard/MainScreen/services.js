@@ -32,10 +32,34 @@ const dashboardApi = baseApi.injectEndpoints({
         }),
         TaskUpdate: builder.mutation({
             query: ({ id, status }) => ({
-                url: `/dashboard/updatetask`, 
-                method: "PUT", 
+                url: `/dashboard/updatetask`,
+                method: "PUT",
                 credentials: "include",
                 body: { id, status },
+            }),
+        }),
+        startAttendance: builder.mutation({
+            query: () => ({
+                url: '/dashboard/startattendance',
+                method: 'PUT',
+            }),
+        }),
+        startBreak: builder.mutation({
+            query: () => ({
+                url: '/dashboard/startbreak',
+                method: 'PUT',
+            }),
+        }),
+        endBreak: builder.mutation({
+            query: () => ({
+                url: '/dashboard/endbreak',
+                method: 'PUT',
+            }),
+        }),
+        endAttendance: builder.mutation({
+            query: () => ({
+                url: '/dashboard/endattendance',
+                method: 'PUT',
             }),
         }),
     }),
@@ -45,7 +69,11 @@ export const {
     useDashboardstatsQuery,
     useCreatenoteMutation,
     useDeletenoteMutation,
-    useTaskUpdateMutation
+    useTaskUpdateMutation,
+    useStartAttendanceMutation,
+    useStartBreakMutation,
+    useEndBreakMutation,
+    useEndAttendanceMutation,
 } = dashboardApi;
 
 export default dashboardApi;
