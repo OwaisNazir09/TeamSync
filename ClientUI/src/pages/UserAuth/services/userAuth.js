@@ -12,15 +12,25 @@ const homeApi = baseApi.injectEndpoints({
                 },
                 credentials: "include"
             }),
+            async onQueryStarted(arg, { queryFulfilled }) {
+                try {
+                    const { data } = await queryFulfilled;
+                    if (data.status === "success") {
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        localStorage.setItem('token', data.token);
+                    }
+                } catch (error) {
+                    console.error("Login failed:", error);
+                }
+            }
         }),
-
         signup: builder.mutation({
             query: (userData) => ({
+                url: "/auth/signup",
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                url: "/auth/signup",
-                method: "POST",
                 body: userData,
             }),
         }),
@@ -34,7 +44,6 @@ const homeApi = baseApi.injectEndpoints({
                 body: { email },
             }),
         }),
-
     }),
 });
 

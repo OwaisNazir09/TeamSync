@@ -30,7 +30,7 @@ function DashboardHome() {
     const [taskFilter, setTaskFilter] = useState("All");
     const [showAllTasks, setShowAllTasks] = useState(false);
 
-    const [attendanceStatus, setAttendanceStatus] = useState('not_started'); // 'not_started', 'started', 'on_break'
+    const [attendanceStatus, setAttendanceStatus] = useState('not_started');
     const [startAttendance] = useStartAttendanceMutation();
     const [startBreak] = useStartBreakMutation();
     const [endBreak] = useEndBreakMutation();
@@ -302,6 +302,8 @@ function DashboardHome() {
             console.error('Failed to update task status:', err);
         }
     };
+    const capitalize = (name) => name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : '';
+
 
     const changeMonth = (delta) => {
         let newMonth = currentMonth + delta;
@@ -369,14 +371,21 @@ function DashboardHome() {
             <nav className="bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
-                        {/* Logo - Centered on Mobile */}
-                        <div className="flex-shrink-0 md:hidden flex-1 flex justify-center">
-                            <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
+
+                        {/* Mobile View - Centered */}
+                        <div className="flex-shrink-0 md:hidden flex flex-col items-center space-y-1">
+                            <h1 className="text-2xl font-extrabold text-gray-800">Welcome</h1>
+                            <h3 className="text-lg font-semibold text-indigo-600">
+                                {capitalize(firstname)} {capitalize(lastname)}
+                            </h3>
                         </div>
 
-                        {/* Logo - Left on Desktop */}
-                        <div className="flex-shrink-0 hidden md:flex">
-                            <h1 className="text-xl font-bold text-indigo-600">TeamSync</h1>
+                        {/* Desktop View - Left-Aligned */}
+                        <div className="flex-shrink-0 hidden md:flex items-center space-x-3">
+                            <h1 className="text-3xl font-extrabold text-gray-900">Welcome</h1>
+                            <h3 className="text-2xl font-semibold text-indigo-600">
+                                {capitalize(firstname)} {capitalize(lastname)}
+                            </h3>
                         </div>
 
                         {/* Mobile Menu Button */}

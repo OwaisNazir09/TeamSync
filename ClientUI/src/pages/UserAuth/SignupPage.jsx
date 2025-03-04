@@ -34,7 +34,8 @@ function SignupPage() {
         email: "",
         phone_number: "",
         password: "",
-        confirm_password: ""
+        confirm_password: "",
+        role: "user" // Default role is 'user'
     });
 
     const handleNavigation = () => {
@@ -141,34 +142,34 @@ function SignupPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setGeneralError("");
-
+    
         // Final validation checks
         if (formData.password !== formData.confirm_password) {
             setPasswordError("Passwords do not match");
             return;
         }
-
+    
         if (ageError) {
             return;
         }
-
+    
         if (!passwordRules.length || !passwordRules.uppercase || !passwordRules.lowercase ||
             !passwordRules.number || !passwordRules.special) {
             setPasswordError("Password does not meet requirements");
             return;
         }
-
+    
         // Disable button for 7 seconds
         setButtonDisabled(true);
         setTimeout(() => {
             setButtonDisabled(false);
         }, 7000);
-
+    
         try {
             const { confirm_password, ...dataToSend } = formData;
             const response = await signup({ ...dataToSend, otp }).unwrap();
             console.log("Signup successful:", response);
-
+    
             if (response.status === "success") {
                 navigate("/UserAuth/login");
             }
@@ -216,6 +217,24 @@ function SignupPage() {
                             )}
 
                             <div className="p-6">
+                                <div className="col-span-1 md:col-span-2 mt-2">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.role === "admin"}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    role: e.target.checked ? "admin" : "user"
+                                                }));
+                                            }}
+                                            className="rounded bg-white/5 border-white/20 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="text-sm text-white/70">
+                                            Create account as admin
+                                        </span>
+                                    </label>
+                                </div>
                                 <form autoComplete="off" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* First Name */}
                                     <div>
