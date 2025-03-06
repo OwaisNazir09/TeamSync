@@ -4,7 +4,7 @@ const baseApi = createApi({
     reducerPath: 'api',
     baseQuery: fetchBaseQuery({
         baseUrl: ' https://teamsyncbackend.onrender.com/',
-        // baseUrl: ' http://localhost:2486/',
+    
         credentials: 'include',
         prepareHeaders: (headers) => {
             const token = localStorage.getItem('token');

@@ -1,3 +1,4 @@
+
 import baseApi from '../../../services/baseApi';
 
 const dashboardApi = baseApi.injectEndpoints({
@@ -98,7 +99,7 @@ const dashboardApi = baseApi.injectEndpoints({
             }),
         }),
         deleteTeam: builder.mutation({
-            query: (teamId) => ({
+            query: () => ({
                 url: `/admin/deleteteam`,
                 method: "DELETE",
                 credentials: "include",
@@ -135,15 +136,7 @@ const dashboardApi = baseApi.injectEndpoints({
                 body: data,
             }),
         }),
-        createNotice: builder.mutation({
-            query: (data) => ({
-                url: "/admin/createnotice",
-                method: "POST",
-                credentials: "include",
-                body: data,
-            }),
-        }),
-        updateTask: builder.mutation({
+        AdminupdateTask: builder.mutation({
             query: (data) => ({
                 url: "/admin/updatetask",
                 method: "PUT",
@@ -152,38 +145,108 @@ const dashboardApi = baseApi.injectEndpoints({
             }),
         }),
         deleteTask: builder.mutation({
-            query: (taskId) => ({
-                url: `/admin/deletetask?id=${taskId}`,
+            query: ({ taskId }) => ({
+                url: `/admin/deletetask`,
                 method: "DELETE",
+                credentials: "include",
+                body: { taskId },
+            }),
+        }),
+        createNotice: builder.mutation({
+            query: (data) => ({
+                url: "/admin/createnotice",
+                method: "POST",
+                credentials: "include",
+                body: data,
+            }),
+        }),
+        getNotices: builder.query({
+            query: () => ({
+                url: `/admin/notices`,
+                method: "GET",
                 credentials: "include",
             }),
         }),
+        deleteNotice: builder.mutation({
+            query: (noticeId) => ({
+                url: `/admin/deletenotice`,
+                method: "DELETE",
+                credentials: "include",
+                body: { id: noticeId },
+            }),
+        }),
+        getViewTasks: builder.query({
+            query: () => ({
+                url: "/admin/viewtasks",
+                method: "GET",
+                credentials: "include",
+            }),
+        }),
+        AdminDashboard: builder.query({
+            query: () => ({
+                url: "/admin/dashboard",
+                method: "GET",
+                credentials: "include",
+            }),
+        }),
+        Logout: builder.mutation({
+            query: () => ({
+                url: "/auth/logout",
+                method: "POST",
+                credentials: "include",
+            }),
+        }),
+
     }),
 });
 
 export const {
+    // Dashboard Stats & Profile
     useDashboardstatsQuery,
+    useProfileStatsQuery,
+
+
+    // Notes Management
     useCreatenoteMutation,
     useDeletenoteMutation,
+
+    // Task Management
+    useCreateTaskMutation,
     useTaskUpdateMutation,
+    useDeleteTaskMutation,
+    useGetViewTasksQuery,
+    useAdminupdateTaskMutation,
+
+    // Attendance & Break Management
     useStartAttendanceMutation,
     useStartBreakMutation,
     useEndBreakMutation,
     useEndAttendanceMutation,
-    useProfileStatsQuery,
+
+    // User Management
     useUpdateUserMutation,
     useUpdateEmploymentMutation,
     useUpdateContactMutation,
 
+    // Team Management (Admin)
     useCreateTeamMutation,
     useDeleteTeamMutation,
     useAddUserToTeamMutation,
     useRemoveUserFromTeamMutation,
     useGetTeamDetailsQuery,
-    useCreateTaskMutation,
+
+    // Notice Management (Admin)
     useCreateNoticeMutation,
-    useUpdateTaskMutation,
-    useDeleteTaskMutation,
+    useGetNoticesQuery,
+    useDeleteNoticeMutation,
+
+
+
+    //dashbaod qyry for admin 
+    useAdminDashboardQuery,
+    useLogoutMutation
+
 } = dashboardApi;
+
 
 export default dashboardApi;

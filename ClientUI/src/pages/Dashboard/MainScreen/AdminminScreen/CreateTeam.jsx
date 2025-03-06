@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  UserPlus, X, User, AlertCircle, Users, Briefcase, Check, ArrowRight, 
+import {
+  UserPlus, X, User, AlertCircle, Users, Briefcase, Check, ArrowRight,
   Trash2, UserMinus, Edit, Save, RefreshCw, ChevronLeft
 } from 'lucide-react';
-import { 
-  useCreateTeamMutation, 
-  useDeleteTeamMutation, 
-  useAddUserToTeamMutation, 
-  useRemoveUserFromTeamMutation, 
-  useGetTeamDetailsQuery 
-} from '../MainScreen/services';
+import {
+  useCreateTeamMutation,
+  useDeleteTeamMutation,
+  useAddUserToTeamMutation,
+  useRemoveUserFromTeamMutation,
+  useGetTeamDetailsQuery
+} from '../services';
 
 const TeamManagement = () => {
-  // States for team creation
   const [teamName, setTeamName] = useState('');
   const [description, setDescription] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
@@ -20,7 +19,7 @@ const TeamManagement = () => {
   const [error, setError] = useState('');
   const [formStep, setFormStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [view, setView] = useState('loading'); // loading, create, manage
+  const [view, setView] = useState('loading');
 
   // States for team management
   const [emailToAdd, setEmailToAdd] = useState('');
@@ -112,7 +111,7 @@ const TeamManagement = () => {
   // Team management functions
   const handleAddUserToTeam = async () => {
     if (!emailToAdd.trim()) return;
-    
+
     try {
       await addUser({ userEmails: [emailToAdd] }).unwrap();
       setEmailToAdd('');
@@ -124,7 +123,7 @@ const TeamManagement = () => {
 
   const handleRemoveUserFromTeam = async (email) => {
     if (!email) return;
-    
+
     try {
       await removeUser({ userEmails: [email] }).unwrap();
       refetch();
@@ -137,7 +136,7 @@ const TeamManagement = () => {
     if (!window.confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
       await deleteTeam().unwrap();
       setView('create');
@@ -167,7 +166,7 @@ const TeamManagement = () => {
 
   const handleAddMultipleUsers = async () => {
     if (emailsToAdd.length === 0) return;
-    
+
     try {
       await addUser({ userEmails: emailsToAdd }).unwrap();
       setEmailsToAdd([]);
@@ -185,7 +184,6 @@ const TeamManagement = () => {
     </div>
   );
 
-  // Render team creation form
   const renderCreateTeam = () => {
     if (isSuccess) {
       return (
@@ -380,7 +378,7 @@ const TeamManagement = () => {
   // Render team management view
   const renderManageTeam = () => {
     if (!teamDetails) return null;
-    
+
     return (
       <div className="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 text-white">
@@ -422,7 +420,7 @@ const TeamManagement = () => {
                     const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500'];
                     const memberColor = colors[index % colors.length];
                     const initials = member.email ? member.email.substring(0, 2).toUpperCase() : 'ME';
-                    
+
                     return (
                       <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
                         <div className="flex items-center gap-2">
@@ -476,9 +474,8 @@ const TeamManagement = () => {
                   <button
                     onClick={handleAddUserToTeam}
                     disabled={isAddingUser || !emailToAdd.trim()}
-                    className={`bg-blue-600 text-white px-4 py-2 rounded-r-lg transition-colors flex items-center justify-center ${
-                      isAddingUser || !emailToAdd.trim() ? 'bg-blue-400 cursor-not-allowed' : 'hover:bg-blue-700'
-                    }`}
+                    className={`bg-blue-600 text-white px-4 py-2 rounded-r-lg transition-colors flex items-center justify-center ${isAddingUser || !emailToAdd.trim() ? 'bg-blue-400 cursor-not-allowed' : 'hover:bg-blue-700'
+                      }`}
                   >
                     {isAddingUser ? <RefreshCw size={16} className="animate-spin" /> : 'Add'}
                   </button>
@@ -503,9 +500,8 @@ const TeamManagement = () => {
                   <button
                     onClick={addEmailToList}
                     disabled={!emailToAdd.trim()}
-                    className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-r-lg transition-colors flex items-center justify-center ${
-                      !emailToAdd.trim() ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'hover:bg-gray-200'
-                    }`}
+                    className={`bg-gray-100 text-gray-700 px-4 py-2 rounded-r-lg transition-colors flex items-center justify-center ${!emailToAdd.trim() ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'hover:bg-gray-200'
+                      }`}
                   >
                     Add to List
                   </button>
@@ -529,9 +525,8 @@ const TeamManagement = () => {
                     <button
                       onClick={handleAddMultipleUsers}
                       disabled={isAddingUser}
-                      className={`w-full py-2 px-3 rounded-lg text-white font-medium ${
-                        isAddingUser ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                      } transition-colors flex items-center justify-center gap-2 text-sm`}
+                      className={`w-full py-2 px-3 rounded-lg text-white font-medium ${isAddingUser ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                        } transition-colors flex items-center justify-center gap-2 text-sm`}
                     >
                       {isAddingUser ? 'Adding...' : `Add ${emailsToAdd.length} Members to Team`}
                     </button>

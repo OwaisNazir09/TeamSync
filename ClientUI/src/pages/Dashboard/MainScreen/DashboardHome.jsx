@@ -380,7 +380,6 @@ function DashboardHome() {
                             </h3>
                         </div>
 
-                        {/* Desktop View - Left-Aligned */}
                         <div className="flex-shrink-0 hidden md:flex items-center space-x-3">
                             <h1 className="text-3xl font-extrabold text-gray-900">Welcome</h1>
                             <h3 className="text-2xl font-semibold text-indigo-600">
@@ -388,7 +387,6 @@ function DashboardHome() {
                             </h3>
                         </div>
 
-                        {/* Mobile Menu Button */}
                         <div className="-mr-2 flex md:hidden">
                             <button
                                 onClick={() => setIsNavOpen(!isNavOpen)}
@@ -398,7 +396,6 @@ function DashboardHome() {
                             </button>
                         </div>
 
-                        {/* Navigation Links - Hidden on Mobile */}
                         <div className="hidden md:flex md:space-x-8 md:ml-10">
                             <button
                                 onClick={() => setActiveTab("dashboard")}
@@ -1058,9 +1055,9 @@ function DashboardHome() {
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h3 className="font-medium text-gray-800">{notice.title}</h3>
-                                                    <p className="text-sm text-gray-600 mt-1">{notice.message}</p>
+                                                    <p className="text-sm text-gray-600 mt-1">{notice.description}</p>
                                                     <p className="text-xs text-gray-500 mt-2">
-                                                        Posted: {notice.date}
+                                                        Posted: {new Date(notice.createdAt).toLocaleDateString()}
                                                     </p>
                                                 </div>
                                                 {!notice.read && (

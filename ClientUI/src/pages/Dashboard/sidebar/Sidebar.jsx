@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import teamsyclogo from '../../../assets/teamsyncLogo.png';
+import teamsyclogo from "../../../assets/teamsyncLogo.png";
 
 function Sidebar() {
     const [hovered, setHovered] = useState(false);
@@ -24,31 +24,23 @@ function Sidebar() {
         return () => window.removeEventListener("resize", checkIfMobile);
     }, []);
 
-    const user = JSON.parse(localStorage.getItem('user'));
-
-
+    const user = JSON.parse(localStorage.getItem("user"));
 
     const usernavabr = [
         { path: "/dashboard", icon: "🏠", label: "Dashboard" },
         { path: "/dashboard/userprofile", icon: "👤", label: "Profile" },
-        { path: "/dashboard/settings", icon: "⚙️", label: "Settings" },
-        { path: "/dashboard/createteam", icon: "👥", label: "Team" }
     ];
 
     const adminnavbar = [
-        { path: "/dashboard/createteam", icon: "👥", label: "CreateTeam" },
-        { path: "/dashboard", icon: "🏠", label: "Dashboard Overview" },
-        { path: "/dashboard/check-attendance", icon: "📋", label: "Check Attendance" },
-        { path: "/dashboard/task-update", icon: "📝", label: "Task Updates" },
-        { path: "/dashboard/assign-tasks", icon: "✅", label: "Assign Tasks" },
-        { path: "/dashboard/performance", icon: "📊", label: "Check Performance" },
-        { path: "/dashboard/create-notices", icon: "📢", label: "Create Notices" },
-        { path: "/dashboard/userprofile", icon: "👤", label: "Profile" },
+        { path: "/dashboard/admin/dashboard", icon: "🏠", label: "Dashboard Overview" },
+        { path: "/dashboard/admin/createteam", icon: "👥", label: "Team" },
+        { path: "/dashboard/admin/taskmanagement", icon: "📝", label: "Task Management" },
+        { path: "/dashboard/admin/notices", icon: "📢", label: "Notices" },
+        { path: "/dashboard/admin/profile", icon: "👤", label: "Profile" },
     ];
 
-
     const roles = user.role;
-    const navItems = roles === 'admin' ? adminnavbar :usernavabr;
+    const navItems = roles === "admin" ? adminnavbar : usernavabr;
 
     const HamburgerIcon = () => (
         <div
@@ -76,7 +68,7 @@ function Sidebar() {
                 >
                     <div
                         className={`h-screen w-64 bg-white text-gray-800 transition-transform duration-300 ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-                            } shadow-lg relative`}
+                            }`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
@@ -108,9 +100,7 @@ function Sidebar() {
                                         <li key={item.path} className="mb-2">
                                             <Link
                                                 to={item.path}
-                                                className={`flex items-center p-3 rounded-lg transition-all duration-200 ${isActive
-                                                    ? "bg-blue-600 text-white"
-                                                    : "text-gray-700 hover:bg-gray-100"
+                                                className={`flex items-center p-3 rounded-lg transition-all duration-200 ${isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"
                                                     }`}
                                                 onClick={() => setMobileMenuOpen(false)}
                                             >
@@ -130,9 +120,7 @@ function Sidebar() {
 
                         {/* Bottom section */}
                         <div className="absolute bottom-4 w-full px-4">
-                            <div className="text-center text-sm text-gray-500">
-                                Dashboard Pro v1.0
-                            </div>
+                            <div className="text-center text-sm text-gray-500">Dashboard Pro v1.0</div>
                         </div>
                     </div>
                 </div>
@@ -150,21 +138,18 @@ function Sidebar() {
         >
             {/* Sidebar Header */}
             <div className="flex items-center p-6 border-b border-gray-200">
-                {/* Logo Container */}
-                <div className={`flex items-center justify-center ${hovered ? "w-10 h-10 rounded-full" : "w-8 h-8"} bg-white`}>
-                    <img
-                        src={"https://imgs.search.brave.com/s33jrX_x0RRJl8pL46aIWS0_g5Z-V80oCTxK0v5M13Q/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9kc2Fk/b29ycy5jb20vd3At/Y29udGVudC91cGxv/YWRzLzIwMjEvMTEv/RFNBLURvb3JzLU1h/cHMucG5n"}
-                        alt="TeamSync Logo"
-                        className={`w-full h-full ${hovered ? "rounded-full" : ""} object-cover`}
-                        style={{ display: hovered ? "block" : "none" }} // Hide the image when sidebar is closed
-                    />
-                </div>
+                <img
+                    src={teamsyclogo}
+                    alt="TeamSync Logo"
+                    className={` object-cover ${hovered ? "w-15 h-15  " : "w-full h-full "
+                        }`}
+                />
 
                 <h2
                     className={`ml-3 font-bold text-xl transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"
                         }`}
                     style={{ transitionDelay: hovered ? "100ms" : "0ms" }} // Smooth delay for title
-                >
+                > 
                     TeamSync
                 </h2>
             </div>
@@ -178,20 +163,22 @@ function Sidebar() {
                             <li key={item.path} className="mb-2">
                                 <Link
                                     to={item.path}
-                                    className={`flex items-center p-3 rounded-lg transition-all duration-200 ${isActive
-                                        ? "bg-blue-600 text-white"
-                                        : "text-gray-700 hover:bg-gray-100"
+                                    className={`flex items-center p-3 rounded-lg transition-all duration-200 ${isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"
                                         }`}
                                 >
                                     <span className="text-xl">{item.icon}</span>
-                                    <span className={`ml-4 transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"
-                                        }`}>
+                                    <span
+                                        className={`ml-4 transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"
+                                            }`}
+                                    >
                                         {item.label}
                                     </span>
                                     {isActive && (
                                         <div className="ml-auto">
-                                            <div className={`w-2 h-2 rounded-full bg-blue-300 ${hovered ? "opacity-100" : "opacity-0"
-                                                }`}></div>
+                                            <div
+                                                className={`w-2 h-2 rounded-full bg-blue-300 ${hovered ? "opacity-100" : "opacity-0"
+                                                    }`}
+                                            ></div>
                                         </div>
                                     )}
                                 </Link>
@@ -202,11 +189,11 @@ function Sidebar() {
             </nav>
 
             {/* Bottom section */}
-            <div className={`absolute bottom-4 w-full px-3 transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"
-                }`}>
-                <div className="text-center text-sm text-gray-500">
-                    Dashboard Pro v1.0
-                </div>
+            <div
+                className={`absolute bottom-4 w-full px-3 transition-opacity duration-200 ${hovered ? "opacity-100" : "opacity-0"
+                    }`}
+            >
+                <div className="text-center text-sm text-gray-500">Dashboard Pro v1.0</div>
             </div>
         </div>
     );
